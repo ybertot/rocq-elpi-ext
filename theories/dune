@@ -1,6 +1,6 @@
-(coq.theory
+(rocq.theory
  (name elpi.ext)
- (theories elpi_elpi elpi)
+ (theories elpi_elpi elpi Stdlib)
  (plugins rocq-elpi-ext.elpi_ext_plugin)
  (package rocq-elpi-ext))
 
