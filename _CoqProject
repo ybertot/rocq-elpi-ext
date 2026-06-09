@@ -10,6 +10,6 @@
 -R _build/default/theories elpi.ext
 
 -R theories ext
-
+-R . Gcd
 -Q tests ext.tests
 -Q _build/default/tests ext.tests
