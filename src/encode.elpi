@@ -45,8 +45,8 @@ fe_encode {{FEpow lp:X (Npos (xI lp:N))}} (mul (mul Y Y) Z) :-
   fe_encode {{FEpow lp:X (Npos lp:N)}} Y.
 
 
-pred p_inj int, polyT -> polyT.
-p_inj 0 P P.
+func p_inj int, polyT -> polyT.
+p_inj 0 P P :- !.
 p_inj N (gconst R) (gconst R) :- N > 0, !.
 p_inj N (var V) (var V') :- N > 0, !, V' is V + N.
 p_inj N (add P Q) (add P' Q') :- N > 0, !, 
@@ -56,27 +56,24 @@ p_inj N (mul P Q) (mul P' Q') :- N > 0, !,
   p_inj N P P', 
   p_inj N Q Q'.
 
-pred pow_x int -> polyT.
-pow_x 0 (gconst (rat 1 1)).
+func pow_x int -> polyT.
+pow_x 0 (gconst (rat 1 1)) :- !.
 pow_x N (var 1) :- N = 1, !.
 pow_x N (mul X Y) :- N > 1, !, 
   N1 is N - 1, 
   pow_x N1 Y,
   X = (var 1).
 
-pred pol_encode term -> polyT.
-pol_encode T _ :-
-coq.say {coq.term->string T}, fail.
-pol_encode {{Pc lp:C}} (gconst (rat C1 1)) :-
-  coq.say "pol const case",
+func pol_encode term -> polyT.
+pol_encode {{Pc lp:C}} (gconst (rat C1 1)) :- !,
   z_encode C C1.
 
-pol_encode {{Pinj lp:J lp:Q}} P' :-
+pol_encode {{Pinj lp:J lp:Q}} P' :- !,
   pos_encode J J',
   pol_encode Q P,
   p_inj J' P P'.
 
-pol_encode {{PX lp:P lp:I lp:Q}} (add PXpart Qpart) :-
+pol_encode {{PX lp:P lp:I lp:Q}} (add PXpart Qpart) :- !,
   pol_encode P EncodedP,
   pos_encode I I',
   pow_x I' PowerX,
@@ -174,9 +171,6 @@ pe_decode (mul P1 P2) {{PEmul lp:X1 lp:X2}} :- !,
   pe_decode P1 X1, pe_decode P2 X2.
 
 func gcd_int int, int -> int.
-gcd_int A B _ :-
-coq.say "A : " A "B : " B,
-fail , !.
 gcd_int A B G :-
 A < 0 ,!, 
 gcd_int (0 - A) B G.
@@ -193,16 +187,10 @@ gcd_int A B G :-
 
 func lcm_int int, int -> int.
 lcm_int A B C :-
-  coq.say A, coq.say B,
   gcd_int A B G,
-  coq.say G,
   C is ((A * B) div G).
 
 func collect_glob_lcm term, int -> int.
-collect_glob_lcm T I _ :-
-  coq.say {coq.term->string T},
-  coq.say I,
-  fail,!.
 collect_glob_lcm {{FEO}} I I :- !.
 collect_glob_lcm {{FEI}} I I :- !.
 collect_glob_lcm {{@FEadd Z lp:X1 lp:X2}} L LCM :- !,
@@ -211,13 +199,10 @@ collect_glob_lcm {{@FEmul Z lp:X1 lp:X2}} L LCM :- !,
   collect_glob_lcm X1 L L', collect_glob_lcm X2 L' LCM.
 collect_glob_lcm {{@FEc Z lp:C}} L LCM :-
   z_encode C I, !,
-  coq.say I,
   lcm_int I L LCM.
 collect_glob_lcm _ L L.
 
 func collect_glob_lcm_poly polyT, int -> int.
-collect_glob_lcm_poly P I _ :-
-coq.say P I, fail,!.
 collect_glob_lcm_poly (gconst (rat 0 _)) I I :- !.
 collect_glob_lcm_poly (gconst (rat N N)) I I :- !.
 collect_glob_lcm_poly (gconst (rat _ 1)) I I :- !.
