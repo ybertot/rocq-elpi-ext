@@ -2,7 +2,8 @@
 From elpi Require Import elpi ext.
 From Gcd.src Extra Dependency "encode.elpi" as encode.
 
-From Stdlib Require Import Field Reals.
+From Stdlib Require Import Field Ring_polynom Reals.
+
 Elpi Command test.
 Elpi Accumulate Plugin "ext.elpi".
 Check (fun x => Npos (xO x)).
@@ -32,7 +33,20 @@ unshelve (epose (x:= _ :nat)).
 exact 7%nat.
 easy.
 Qed.
-Definition Feeval' := @FEeval R 0 1 Rplus Rmult Rminus Ropp Rdiv Rinv Z IZR nat BinNat.N.to_nat pow.
+Definition Peeval' := @PEeval R 0 1 Rplus Rmult Rminus Ropp Z IZR nat BinNat.N.to_nat pow.
+Elpi Accumulate File encode.
+Elpi Query lp:{{
+collect_glob_lcm {{`V[ 1] ^ 5 + `C[ 10%Z] * `V[ 1] ^ 3 + `C[ 5%Z] * `V[ 1] ^ 2 + `C[ 3%Z] * `V[ 1] + `C[ 15%Z]}} 1 X.
+}}.
+
+Definition wrapper_PolZ (x : Pol Z) :=
+True.
+
+
+Definition wrapped_result (t: Z * (PExpr Z * (PExpr Z * PExpr Z))) :=
+True.
+
+Check wrapped_result (0%Z , (PEO, (PEO, PEO))).
 Elpi Tactic factorize_by_gcd.
 Elpi Accumulate Plugin "ext.elpi".
 Elpi Accumulate File encode.
@@ -41,54 +55,99 @@ Elpi Accumulate lp:{{
 solve (goal _ _ _ _ L ) _ :-
 coq.say L,fail.
 
-solve (goal _ _ _ _ [trm N, trm D] as G) GL :-
-  coq.say "a",
+solve (goal _ _ T _ _  as G) GL :-
+  T = {{wrapper_PolZ lp:Pol2 -> wrapper_PolZ lp:Pol1 -> _ }},
+  coq.say "case wrapper pol",
+  pol_encode Pol1 Nx,
+  pol_encode Pol2 Dx,
+  coq.say "ok",
+    coq.say "Pol1" {coq.term->string Pol1} "Pol2" {coq.term->string Pol2},
 
-  fe_encode N Ne,
-  fe_encode D De,
-  coq.say {coq.term->string N},
+  collect_glob_lcm_poly (add Nx Dx) 1 LCM,
+  coq.say "ok",
+  if (LCM > 1) 
+  (multiply_lcm_poly Nx LCM Ne,
+  multiply_lcm_poly Dx LCM De) (Ne = Nx, De = Dx)
+  ,
+  coq.say "Ne" Ne "De" De,
   gcd_poly Ne De Gcd,
-  
+  coq.say "ok",
   factorize_poly Ne De Ne' De',
-  fe_decode Ne' N',
-  fe_decode De' D',
-  fe_decode Gcd Gcd',
-refine 
-{{let H : lp:N = (@FEmul Z lp:N' lp:Gcd') := _ in 
-  let H' : lp:D = (@FEmul Z lp:D' lp:Gcd') := _ in _}}
-  G GL.
+  pe_decode Ne' N',
+  pe_decode De' D',
+  pe_decode Gcd Gcd',
+  z_decode LCM Co,
+
+  coq.say "Co1" {coq.term->string Co},
+      coq.say "N'" {coq.term->string N'} "D'" {coq.term->string D'}
+      "Gcd'" {coq.term->string Gcd'},
+  std.assert-ok! (coq.typecheck {{ wrapped_result (pair lp:Co (pair lp:N' (pair lp:D' lp:Gcd')))}} Ty) "typecheck fail",
+  coq.say "Ty" Ty,
+  (refine 
+  % {{ _ : (wrapped_result (pair lp:Co (pair lp:N' (pair lp:D' lp:Gcd')) ) -> _) I }}  
+  {{_  (I : (wrapped_result (pair lp:Co (pair lp:N' (pair lp:D' lp:Gcd')))))}}
+  G GL).
 
 
-solve (goal _ _ {{wrapper_LR lp:L -> wrapper_F lp:D -> wrapper_F lp:N -> _}} _ _ as G ) GL :-
-coq.say L,
-  fe_encode N Ne,
-  fe_encode D De,
-  coq.say {coq.term->string N},
-  gcd_poly Ne De Gcd,
-  
-  factorize_poly Ne De Ne' De',
-  fe_decode Ne' N',
-  fe_decode De' D',
-  fe_decode Gcd Gcd',
-refine 
-{{let H : (Feeval' lp:L lp:N) = Feeval' lp:L (@FEmul Z lp:N' lp:Gcd') := _ in 
-  let H' : (Feeval' lp:L lp:D) = Feeval' lp:L (@FEmul Z lp:D' lp:Gcd') := _ in _}}
-  G GL.
+% solve (goal _ _ {{wrapper_LR lp:L -> wrapper_F lp:D -> wrapper_F lp:N -> _}} _ _ as G ) GL :-
+% coq.say L,
+% coq.say "ok",
+%   fe_encode N Nx,
+%   fe_encode D Dx,
+%   coq.say "ok",
+%   collect_glob_lcm_poly (add Nx Dx) 1 LCM,
+%     coq.say "ok",
+
+%   if (LCM > 1) 
+%   (multiply_lcm_poly Nx LCM Ne,
+%   multiply_lcm_poly Dx LCM De) (Ne = Nx, De = Dx)
+%   ,
+%   gcd_poly Ne De Gcd,
+%   coq.say "ok",
+%   factorize_poly Ne De Ne' De',
+%   pe_decode Ne' N',
+%   pe_decode De' D',
+%   pe_decode Gcd Gcd',
+%   lcm_to_coeff LCM Co,
+%     coq.say "Co" {coq.term->string Co},
+% if (LCM > 1)
+%   (coq.say N,
+%     refine 
+%   {{let H : (lp:Co *(Peeval' lp:L lp:N))%R = Peeval' lp:L (@FEmul Z lp:N' lp:Gcd') := _ in 
+%   let H' : (lp:Co *(Peeval' lp:L lp:D))%R = Peeval' lp:L (@FEmul Z lp:D' lp:Gcd') := _ in _}}
+%   G GL)
+%   (coq.say {coq.term->string Gcd'},
+%     refine 
+%   {{let H : (Peeval' lp:L lp:N) = Peeval' lp:L (@FEmul Z lp:N' lp:Gcd') := _ in 
+%   let H' : (Peeval' lp:L lp:D) = Peeval' lp:L (@FEmul Z lp:D' lp:Gcd') := _ in _}}
+%   G GL).
 }}.
 
 
-
+Ltac gcd_for_field pol1 pol2 :=
+  generalize (I:wrapper_PolZ pol1);
+  generalize (I:wrapper_PolZ pol2);
+   match goal with  |- 
+      wrapper_PolZ  ?pol1' -> wrapper_PolZ ?pol2' -> _ =>
+  elpi factorize_by_gcd; 
+  let tmp_name := fresh "Gcd_var" in intros tmp_name _ _;
+  revert tmp_name;
+  match goal with  |- 
+      wrapped_result (?Co, (?N',(?D', ?Gcd'))) ->_ 
+ => idtac
+ end
+ end.
 
 Goal True.
-  unshelve elpi factorize_by_gcd (`V[1] ^ 2) (`V[1] ).
+   (* elpi factorize_by_gcd (`V[1] ^ 2) (`V[1] ).
    elpi factorize_by_gcd (`V[ 1] ^ 5 + `C[ 4%Z] * `V[ 1] ^ 3 + `C[ 5%Z] * `V[ 1] ^ 2 + `C[ 3%Z] * `V[ 1] +
-`C[ 15%Z]) (`V[ 1] ^ 4 - `V[ 1] ^ 3 + `C[ 2%Z] * `V[ 1] ^ 2 - `C[ 3%Z] * `V[ 1] - `C[ 3%Z]).
-  Show 3.
+`C[ 15%Z]) (`V[ 1] ^ 4 - `V[ 1] ^ 3 + `C[ 2%Z] * `V[ 1] ^ 2 - `C[ 3%Z] * `V[ 1] - `C[ 3%Z]). *)
+  (* Show 3.
 (* assert (H : True = True). *)
 Show Proof.
   elpi factorize_by_gcd (`V[1] ^ 2) (`V[1] ).
 Admitted.
-Locate "_ ^ _".
+Locate "_ ^ _". *)
 Open Scope R_scope.
 
 
@@ -107,19 +166,26 @@ let l' := FFV IZR_tac Rpow_tac 0 1 Rplus Rmult Rminus Ropp Rdiv Rinv pow d l in
       (* idtac *)
       end.  
 Close Scope R_scope.
+
+Ltac consume_gcd pol1 pol2 :=
+let v := (gcd_for_field pol1 pol2) in
+let w := constr:(v) in
+assert (w = w) by easy.
 Elpi Tactic factorize2.
 Elpi Accumulate Plugin "ext.elpi".
 Elpi Accumulate lp:{{
-  
 
 }}.
+Goal True.
+gcd_for_field (PX (Pc ((- 1)%Z)) 2%positive (Pc 1%Z))  (PX (Pc (1%Z)) 1%positive (Pc 1%Z)).
 
 Ltac simplify_by_gcd n d :=
- unshelve foo1 n d; cbv [Feeval' FEeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add]; try ring.
+ unshelve foo1 n d; cbv [Peeval' PEeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add]; try ring.
 
 Goal True. 
- simplify_by_gcd (PI^5 + 4* PI^3 + 5* PI^2 +3* PI + 15)%R (PI^4 - PI ^3 + 2 *PI^2 - 3 * PI -3)%R; cbv [Feeval' FEeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add]; try ring.
-cbv [Feeval' FEeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add] in H.
-cbv [Feeval' FEeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add] in H'.
+ simplify_by_gcd (PI^5 + 4* PI^3 + 5* PI^2 +3* PI + 15)%R (PI^4 - PI ^3 + 2 *PI^2 - 3 * PI -3)%R; cbv [Peeval' PEeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add]; try ring.
+ simplify_by_gcd ((1/3)*PI^5 + (4/2)* PI^3 + 5* PI^2 +3* PI + 15)%R (PI^4 - PI ^3 + 2 *PI^2 - 3 * PI -3)%R; cbv [Peeval' Peeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add]; try ring.
+cbv [Peeval' Peeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add] in H.
+cbv [Peeval' Peeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add] in H'.
 easy.
 Qed.

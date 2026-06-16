@@ -44,8 +44,49 @@ fe_encode {{FEpow lp:X (Npos (xI lp:N))}} (mul (mul Y Y) Z) :-
   fe_encode X Z,
   fe_encode {{FEpow lp:X (Npos lp:N)}} Y.
 
+
+pred p_inj int, polyT -> polyT.
+p_inj 0 P P.
+p_inj N (gconst R) (gconst R) :- N > 0, !.
+p_inj N (var V) (var V') :- N > 0, !, V' is V + N.
+p_inj N (add P Q) (add P' Q') :- N > 0, !, 
+  p_inj N P P', 
+  p_inj N Q Q'.
+p_inj N (mul P Q) (mul P' Q') :- N > 0, !, 
+  p_inj N P P', 
+  p_inj N Q Q'.
+
+pred pow_x int -> polyT.
+pow_x 0 (gconst (rat 1 1)).
+pow_x N (var 1) :- N = 1, !.
+pow_x N (mul X Y) :- N > 1, !, 
+  N1 is N - 1, 
+  pow_x N1 Y,
+  X = (var 1).
+
+pred pol_encode term -> polyT.
+pol_encode T _ :-
+coq.say {coq.term->string T}, fail.
+pol_encode {{Pc lp:C}} (gconst (rat C1 1)) :-
+  coq.say "pol const case",
+  z_encode C C1.
+
+pol_encode {{Pinj lp:J lp:Q}} P' :-
+  pos_encode J J',
+  pol_encode Q P,
+  p_inj J' P P'.
+
+pol_encode {{PX lp:P lp:I lp:Q}} (add PXpart Qpart) :-
+  pol_encode P EncodedP,
+  pos_encode I I',
+  pow_x I' PowerX,
+  PXpart = (mul EncodedP PowerX),
+  pol_encode Q EncodedQ,
+  p_inj 1 EncodedQ Qpart.
+   
+
 func fe_decode polyT -> term.
-fe_decode (gconst (rat 0 1)) {{FEO}} :- !.
+fe_decode (gconst (rat 0 _)) {{FEO}} :- !.
 fe_decode (gconst (rat 1 1)) {{FEI}} :- !.
 fe_decode (gconst (rat Num 1)) {{@FEc Z lp:Num1 }} :- !,
   z_decode Num Num1.
@@ -79,6 +120,7 @@ fe_decode (mul Y Y) {{FEpow lp:Z (Npos 2)}}:-
 fe_decode (mul P1 P2) {{FEmul lp:X1 lp:X2}} :- !,
   fe_decode P1 X1, fe_decode P2 X2.
 
+
 func fe_to_reals term, list term -> term.
 fe_to_reals {{FEO}} _ {{0%R}}.
 fe_to_reals {{FEI}} _ {{1%R}}.
@@ -86,7 +128,7 @@ fe_to_reals {{@FEc Z lp:C }} _ C.
 fe_to_reals {{@FEX Z lp:P}} V X :-
   pos_encode P I,
   I1 is I - 1,
-  nth I1 V X.
+  std.nth I1 V X.
 fe_to_reals {{@FEadd Z lp:X1 lp:X2}} _ {{(lp:P1 + lp:P2)%R}} :-
   fe_to_reals X1 _ P1, fe_to_reals X2 _ P2.
 fe_to_reals {{@FEsub Z lp:X1 lp:X2}} _ {{(lp:P1 - lp:P2)%R}} :-
@@ -98,8 +140,113 @@ fe_to_reals {{@FEopp Z lp:X}} _ {{( - lp:P)%R}} :-
 fe_to_reals {{@FEpow Z _ 0}} _ {{1%R}}.
 fe_to_reals {{@FEpow Z lp:X (Npos 1)}} _ Y :-
   fe_to_reals X [] Y.
-% fe_to_reals {{FEpow lp:X (Npos lp:P)}} _   :-
-%   fe_to_reals {{FEpow lp:X (Npos lp:N)}} Y.
-% fe_to_reals {{FEpow lp:X (Npos (xI lp:N))}} (mul (mul Y Y) Z) :-
-%   fe_to_reals X Z,
-%   fe_to_reals {{FEpow lp:X (Npos lp:N)}} Y.
+
+func pe_decode polyT -> term.
+pe_decode (gconst (rat 0 _)) {{PEO}} :- !.
+pe_decode (gconst (rat N N)) {{PEI}} :- !.
+pe_decode (gconst (rat Num 1)) {{@PEc Z lp:Num1 }} :- !,
+  z_decode Num Num1.
+pe_decode (var Y) {{@PEX Z lp:X}} :- !,
+ pos_decode Y X.
+pe_decode (add P1 (mul (gconst (rat (-1) 1)) P2)) {{PEsub lp:X1 lp:X2}} :- !,
+  pe_decode P1 X1, pe_decode P2 X2.
+pe_decode (add P1 P2) {{@PEadd Z lp:X1 lp:X2}} :- !,
+  pe_decode P1 X1, pe_decode P2 X2 .
+pe_decode (mul (gconst (rat 1 1)) X) Y :- !,
+  pe_decode X Y.
+pe_decode (mul X (gconst (rat 1 1))) Y :- !,
+  pe_decode X Y.
+pe_decode (mul X (gconst (rat (-1) 1))) {{PEopp lp:Y}} :- !,
+  pe_decode X Y.
+pe_decode (mul (gconst (rat (-1) 1)) X) {{PEopp lp:Y}} :- !,
+  pe_decode X Y.
+pe_decode (mul (mul Y Y) Z) {{PEpow lp:X (Npos (xI lp:N))}} :- 
+  pe_decode Z X,
+  pe_decode Y {{PEpow lp:X (Npos lp:N)}} ,!.
+pe_decode (mul (mul Y Y) Z) {{PEpow lp:X (Npos 3)}} :- 
+  pe_decode Z X,
+  pe_decode Y X ,!.
+pe_decode (mul Y Y) {{PEpow lp:X (Npos (xO lp:N))}}:-
+  pe_decode Y {{PEpow lp:X (Npos lp:N)}} , !.
+pe_decode (mul Y Y) {{PEpow lp:Z (Npos 2)}}:-
+  pe_decode Y Z , !.
+pe_decode (mul P1 P2) {{PEmul lp:X1 lp:X2}} :- !,
+  pe_decode P1 X1, pe_decode P2 X2.
+
+func gcd_int int, int -> int.
+gcd_int A B _ :-
+coq.say "A : " A "B : " B,
+fail , !.
+gcd_int A B G :-
+A < 0 ,!, 
+gcd_int (0 - A) B G.
+gcd_int A B G :-
+B < 0,!, 
+gcd_int A (0 - B) G.
+gcd_int 0 0 1 :-!.
+gcd_int A 0 A :-!.
+gcd_int 0 B B :-!.
+gcd_int A B G :-
+  C is A mod B,
+  gcd_int B C G.
+
+
+func lcm_int int, int -> int.
+lcm_int A B C :-
+  coq.say A, coq.say B,
+  gcd_int A B G,
+  coq.say G,
+  C is ((A * B) div G).
+
+func collect_glob_lcm term, int -> int.
+collect_glob_lcm T I _ :-
+  coq.say {coq.term->string T},
+  coq.say I,
+  fail,!.
+collect_glob_lcm {{FEO}} I I :- !.
+collect_glob_lcm {{FEI}} I I :- !.
+collect_glob_lcm {{@FEadd Z lp:X1 lp:X2}} L LCM :- !,
+  collect_glob_lcm X1 L L', collect_glob_lcm X2 L' LCM.
+collect_glob_lcm {{@FEmul Z lp:X1 lp:X2}} L LCM :- !,
+  collect_glob_lcm X1 L L', collect_glob_lcm X2 L' LCM.
+collect_glob_lcm {{@FEc Z lp:C}} L LCM :-
+  z_encode C I, !,
+  coq.say I,
+  lcm_int I L LCM.
+collect_glob_lcm _ L L.
+
+func collect_glob_lcm_poly polyT, int -> int.
+collect_glob_lcm_poly P I _ :-
+coq.say P I, fail,!.
+collect_glob_lcm_poly (gconst (rat 0 _)) I I :- !.
+collect_glob_lcm_poly (gconst (rat N N)) I I :- !.
+collect_glob_lcm_poly (gconst (rat _ 1)) I I :- !.
+collect_glob_lcm_poly (gconst (rat _ I)) L LCM :- !,
+  lcm_int I L LCM.
+collect_glob_lcm_poly (mul P1 P2) L LCM :- !,
+  collect_glob_lcm_poly P1 L L', collect_glob_lcm_poly P2 L' LCM.
+collect_glob_lcm_poly (add P1 P2) L LCM :- !,
+  collect_glob_lcm_poly P1 L L', collect_glob_lcm_poly P2 L' LCM.
+collect_glob_lcm_poly _ L L.
+
+func multiply_lcm_poly polyT, int -> polyT.
+multiply_lcm_poly (gconst (rat 0 _)) _ (gconst (rat 0 1)) :- !.
+multiply_lcm_poly (gconst (rat N N)) L (gconst (rat L 1)) :- !.
+multiply_lcm_poly (gconst (rat Num 1)) L (gconst (rat Num' 1))  :- !,
+  Num' is Num * L.
+
+multiply_lcm_poly (gconst (rat Num Denom)) L (gconst (rat N' 1)) :- !,
+  M is L div Denom,
+  N' is Num * M.
+
+multiply_lcm_poly (mul P1 P2) L (mul P1' P2') :- !,
+  multiply_lcm_poly P1 L P1', multiply_lcm_poly P2 L P2'.
+
+multiply_lcm_poly (add P1 P2) L (add P1' P2') :- !,
+  multiply_lcm_poly P1 L P1', multiply_lcm_poly P2 L P2'.
+
+func fe_remove_fractions term, term -> term.
+fe_remove_fractions {{FEO}} _ {{FEO}} :- !.
+fe_remove_fractions {{FEI}} M M:- !.
+fe_remove_fractions {{@FEc Z lp:C}} {{@FEc Z lp:M}} {{@FEmul Z (lp:C*lp:M)%Z }}:- !.
+fe_remove_fractions T _ T.
