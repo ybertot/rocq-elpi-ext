@@ -65,6 +65,8 @@ pow_x N (mul X Y) :- N > 1, !,
   X = (var 1).
 
 func pol_encode term -> polyT.
+pol_encode T _ :-
+coq.say "pol_encode_in" T, fail,!.
 pol_encode {{Pc lp:C}} (gconst (rat C1 1)) :- !,
   z_encode C C1.
 
@@ -139,6 +141,8 @@ fe_to_reals {{@FEpow Z lp:X (Npos 1)}} _ Y :-
   fe_to_reals X [] Y.
 
 func pe_decode polyT -> term.
+pe_decode P _ :-
+coq.say P, fail,!.
 pe_decode (gconst (rat 0 _)) {{PEO}} :- !.
 pe_decode (gconst (rat N N)) {{PEI}} :- !.
 pe_decode (gconst (rat Num 1)) {{@PEc Z lp:Num1 }} :- !,
@@ -243,3 +247,14 @@ fe_remove_fractions {{FEO}} _ {{FEO}} :- !.
 fe_remove_fractions {{FEI}} M M:- !.
 fe_remove_fractions {{@FEc Z lp:C}} {{@FEc Z lp:M}} {{@FEmul Z (lp:C*lp:M)%Z }}:- !.
 fe_remove_fractions T _ T.
+
+func normalize_after_fac polyT, polyT -> polyT, polyT.
+normalize_after_fac P1 P2 _ _:-
+coq.say "norm in" P1 P2, fail,!.
+normalize_after_fac (gconst(rat _ 1)as N) D N D :- !.
+normalize_after_fac (gconst(rat I J)) D (gconst(rat I 1)) (mul (gconst (rat 1 J)) D) :- !.
+normalize_after_fac (mul P1 P2) D (mul P1' P2') (mul D1 D2) :- !,
+normalize_after_fac P1 D P1' D1, normalize_after_fac P2 D P2' D2.
+normalize_after_fac (add P1 P2) D (add P1' P2') (add D1 D2) :- !,
+normalize_after_fac P1 D P1' D1, normalize_after_fac P2 D P2' D2.
+normalize_after_fac N D N D.

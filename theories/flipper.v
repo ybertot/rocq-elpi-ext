@@ -48,27 +48,45 @@ Elpi Tactic factorize_by_gcd.
 Elpi Accumulate Plugin "ext.elpi".
 Elpi Accumulate File encode.
 Elpi Accumulate lp:{{
+solve _ _ :-
+coq.say "fac by gcd called",fail.
 
 solve (goal _ _ T _ _  as G) GL :-
+  coq.say "fac by gcd called1",
+
   T = {{wrapper_PolZ lp:Pol2 -> wrapper_PolZ lp:Pol1 -> _ }},
+  coq.say "at least we're here",
   pol_encode Pol1 Nx,
+  coq.say "Nx",
   pol_encode Pol2 Dx,
+  coq.say "pol_encode passed",
   collect_glob_lcm_poly (add Nx Dx) 1 LCM,
   if (LCM > 1) 
   (multiply_lcm_poly Nx LCM Ne,
   multiply_lcm_poly Dx LCM De) (Ne = Nx, De = Dx),
   gcd_poly Ne De Gcd,
+    coq.say "gcd_poly passed",
+
   factorize_poly Ne De Ne' De',
-  pe_decode Ne' N',
-  pe_decode De' D',
+  coq.say "ok",
+  normalize_after_fac Ne' De' Ne'' De'',
+  coq.say " fac passed",
+  pe_decode Ne'' N',
+  pe_decode De'' D',
+    coq.say "pe_decode passed",
+
   pe_decode Gcd Gcd',
   z_decode LCM Co,
+  coq.say "and here",
   (refine 
   {{_  (I : (wrapped_result (pair lp:Co (pair lp:N' (pair lp:D' lp:Gcd')))))}}
-  G GL).
+  G GL),
+  coq.say "success refine with " Co N' D' Gcd'.
 
 
 solve (goal _ _ {{wrapper_LR lp:L -> wrapper_F lp:D -> wrapper_F lp:N -> _}} _ _ as G ) GL :-
+coq.say "fac by gcd called2",
+
   fe_encode N Nx,
   fe_encode D Dx,
 
@@ -173,23 +191,42 @@ Definition pol2 := norm p2.
 Definition p3 := ('x ^ 3 + 'y) * ('y  - 'x ^ 3).
 Definition pol3 := norm p3.
 
+Definition p4 := (norm_subst 0%Z 1%Z Z.add Z.mul Z.sub Z.opp Z.eqb Z.quotrem ring_subst_niter nil
+(PEadd (PEpow 'x (Npos 2)) (PEpow 'x (Npos 2)))).
+Definition pol4 :=  PX (Pc 2%Z) 2 (Pc 0%Z).
+Check pol4.
+Definition p5 := (norm_subst 0%Z 1%Z Z.add Z.mul Z.sub Z.opp Z.eqb Z.quotrem ring_subst_niter nil('x)).
+Definition pol5 := PX (Pc 1%Z) 1 (Pc 0%Z).
 Elpi Accumulate File encode.
 
 Elpi Query lp:{{
-  coq.reduction.vm.norm {{pol1}} _ X1,
-  pol_encode X1 Pol1,
-  pe_decode Pol1 P1,
-  coq.term->string P1 PS1,
-  coq.reduction.vm.norm {{pol2}} _ X2,
-  pol_encode X2 Pol2,
-  pe_decode Pol2 P2,
-  coq.term->string P2 PS2,
-  coq.reduction.vm.norm {{pol3}} _ X3,
-  pol_encode X3 Pol3,
-  pe_decode Pol3 P3,
-  coq.term->string P3 PS3
+  % coq.reduction.vm.norm {{pol1}} _ X1,
+  % pol_encode X1 Pol1,
+  % pe_decode Pol1 P1,
+  % coq.term->string P1 PS1,
+  % coq.reduction.vm.norm {{pol2}} _ X2,
+  % pol_encode X2 Pol2,
+  % pe_decode Pol2 P2,
+  % coq.term->string P2 PS2,
+  % coq.reduction.vm.norm {{pol3}} _ X3,
+  % pol_encode X3 Pol3,
+  % pe_decode Pol3 P3,
+  % coq.term->string P3 PS3,
+  % coq.reduction.vm.norm {{pol1}} _ X1,
+  pol_encode {{PX (Pc 2%Z) 2 (Pc 0%Z)}} Dx,
+  pol_encode {{PX (Pc 1%Z) 1 (Pc 0%Z)}} Nx,
+  collect_glob_lcm_poly (add Nx Dx) 1 LCM,
+  if (LCM > 1) 
+  (multiply_lcm_poly Nx LCM Ne,
+  multiply_lcm_poly Dx LCM De) (Ne = Nx, De = Dx),
+  gcd_poly Ne De Gcd,
+    coq.say "gcd_poly passed",
 
+  factorize_poly Ne De Ne' De',
+  coq.say " fac passed",
+  normalize_after_fac Ne' De' Ne'' De'',
+  pe_decode Ne'' N'  %   coq.say "pe_decode passed",
 
 }}.
-Print N.
-Check (PEopp (PEmul 'x (PEmul 'x (PEmul 'x (PEmul 'x (PEmul 'x 'x))))) + PEmul 'y 'y).
+Goal True.
+(* gcd_for_field (PX (Pc 2%Z) 2 (Pc 0%Z)) (PX (Pc 1%Z) 1 (Pc 0%Z)). *)
