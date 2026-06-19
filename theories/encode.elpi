@@ -65,8 +65,6 @@ pow_x N (mul X Y) :- N > 1, !,
   X = (var 1).
 
 func pol_encode term -> polyT.
-pol_encode T _ :-
-coq.say "pol_encode_in" T, fail,!.
 pol_encode {{Pc lp:C}} (gconst (rat C1 1)) :- !,
   z_encode C C1.
 
@@ -202,18 +200,6 @@ lcm_int A B C :-
   gcd_int A B G,
   C is ((A * B) div G).
 
-func collect_glob_lcm term, int -> int.
-collect_glob_lcm {{FEO}} I I :- !.
-collect_glob_lcm {{FEI}} I I :- !.
-collect_glob_lcm {{@FEadd Z lp:X1 lp:X2}} L LCM :- !,
-  collect_glob_lcm X1 L L', collect_glob_lcm X2 L' LCM.
-collect_glob_lcm {{@FEmul Z lp:X1 lp:X2}} L LCM :- !,
-  collect_glob_lcm X1 L L', collect_glob_lcm X2 L' LCM.
-collect_glob_lcm {{@FEc Z lp:C}} L LCM :-
-  z_encode C I, !,
-  lcm_int I L LCM.
-collect_glob_lcm _ L L.
-
 func collect_glob_lcm_poly polyT, int -> int.
 collect_glob_lcm_poly (gconst (rat 0 _)) I I :- !.
 collect_glob_lcm_poly (gconst (rat N N)) I I :- !.
@@ -241,6 +227,8 @@ multiply_lcm_poly (mul P1 P2) L (mul P1' P2') :- !,
 
 multiply_lcm_poly (add P1 P2) L (add P1' P2') :- !,
   multiply_lcm_poly P1 L P1', multiply_lcm_poly P2 L P2'.
+
+multiply_lcm_poly (var V) L (var V).
 
 func fe_remove_fractions term, term -> term.
 fe_remove_fractions {{FEO}} _ {{FEO}} :- !.
