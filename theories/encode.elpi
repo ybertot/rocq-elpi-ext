@@ -65,8 +65,6 @@ pow_x N (mul X Y) :- N > 1, !,
   X = (var 1).
 
 func pol_encode term -> polyT.
-pol_encode T _ :-
-coq.say "pol_encode_in" T, fail,!.
 pol_encode {{Pc lp:C}} (gconst (rat C1 1)) :- !,
   z_encode C C1.
 
@@ -141,8 +139,6 @@ fe_to_reals {{@FEpow Z lp:X (Npos 1)}} _ Y :-
   fe_to_reals X [] Y.
 
 func pe_decode polyT -> term.
-pe_decode P _ :-
-coq.say P, fail,!.
 pe_decode (gconst (rat 0 _)) {{PEO}} :- !.
 pe_decode (gconst (rat N N)) {{PEI}} :- !.
 pe_decode (gconst (rat Num 1)) {{@PEc Z lp:Num1 }} :- !,
@@ -242,19 +238,31 @@ multiply_lcm_poly (mul P1 P2) L (mul P1' P2') :- !,
 multiply_lcm_poly (add P1 P2) L (add P1' P2') :- !,
   multiply_lcm_poly P1 L P1', multiply_lcm_poly P2 L P2'.
 
-func fe_remove_fractions term, term -> term.
-fe_remove_fractions {{FEO}} _ {{FEO}} :- !.
-fe_remove_fractions {{FEI}} M M:- !.
-fe_remove_fractions {{@FEc Z lp:C}} {{@FEc Z lp:M}} {{@FEmul Z (lp:C*lp:M)%Z }}:- !.
-fe_remove_fractions T _ T.
+multiply_lcm_poly P _ P.
 
-func normalize_after_fac polyT, polyT -> polyT, polyT.
-normalize_after_fac P1 P2 _ _:-
-coq.say "norm in" P1 P2, fail,!.
-normalize_after_fac (gconst(rat _ 1)as N) D N D :- !.
-normalize_after_fac (gconst(rat I J)) D (gconst(rat I 1)) (mul (gconst (rat 1 J)) D) :- !.
-normalize_after_fac (mul P1 P2) D (mul P1' P2') (mul D1 D2) :- !,
-normalize_after_fac P1 D P1' D1, normalize_after_fac P2 D P2' D2.
-normalize_after_fac (add P1 P2) D (add P1' P2') (add D1 D2) :- !,
-normalize_after_fac P1 D P1' D1, normalize_after_fac P2 D P2' D2.
-normalize_after_fac N D N D.
+func multiply_if_gt_one polyT, int -> polyT.
+multiply_if_gt_one P N P1 :-
+  N > 1, !,
+  multiply_lcm_poly P N P1.
+multiply_if_gt_one P _ P.
+
+% encoding func, decoding func, N , D -> N', D', Gcd, FacN'Gcd, FacD'Gcd
+func gcd_and_factors (func term -> polyT), (func polyT -> term), term, term -> term, term, term, term, term.
+gcd_and_factors Encoder Decoder N D Ne De Gcd' CoNG CoDG :-
+  Encoder N Nx,
+  Encoder D Dx,
+  gcd_poly Nx Dx Gcd,
+  factorize_poly Nx Dx Ne' De',
+  collect_glob_lcm_poly Ne' 1 LCMN,
+  collect_glob_lcm_poly De' 1 LCMD,
+  collect_glob_lcm_poly Gcd 1 LCMG,
+  multiply_if_gt_one Ne' LCMN N',
+  multiply_if_gt_one De' LCMD D',
+  multiply_if_gt_one Gcd LCMG G',
+  Decoder N' Ne,
+  Decoder D' De,
+  Decoder G' Gcd',
+  LCMNG is LCMN * LCMG,
+  LCMDG is LCMD * LCMG,
+  z_decode LCMNG CoNG,
+  z_decode LCMDG CoDG.
