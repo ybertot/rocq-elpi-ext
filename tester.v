@@ -25,7 +25,8 @@ match goal with |- wrapped_result (?F, (?N',(?D', ?Gcd'))) -> _
 Ltac reduce_Pphi_pow :=
     cbv [Pphi_pow Pphi_avoid mult_dev Peq Z.eqb P0 mkmult_c
         mkmult_c_pos get_signZ Pos.eqb mkmult_rec List.rev' add_pow_list
-        mkmult1 List.rev_append List.hd BinNat.N.add].
+        mkmult1 List.rev_append List.hd BinNat.N.add
+        add_mult_dev mkadd_mult mkmult_c_pos mkmult_rec BinNat.N.to_nat PosDef.Pos.to_nat PosDef.Pos.iter_op List.rev' List.rev_append  List.hd List.tl add_pow_list mkmult_rec Pos.add Nat.add]. 
 
 Ltac den_gcd_n0 :=
   split;[ apply Rmult_integral_contrapositive; split;
@@ -35,10 +36,10 @@ Ltac find_fraction dummy :=
   let t_eq := fresh "term_eq" in
   let hyp := fresh "rewrite_lemma" in
   intros t_eq hyp;
-  match type of t_eq with
+  lazymatch type of t_eq with
   | ?term = _ =>
     clear t_eq;
-    match type of hyp with
+    lazymatch type of hyp with
     | forall _ _ _ _,
       gcd_cond _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?FV ?D _ ?N _ _ -> _
       =>
@@ -63,11 +64,12 @@ Ltac find_fraction dummy :=
         [
           generalize (hyp F N2 D2 Gcd hyp_aux fact_n0 num_eq den_eq);
           clear hyp_aux hyp fact_n0 num_eq den_eq;
-          intros hyp;
-          match type of hyp with
+          let hyp2 := fresh "rewrite_lemma2" in 
+          intros hyp2;
+          match type of hyp2 with
           | _ -> ?t = ?r =>
-            change t with term in hyp;
-            (rewrite hyp; clear hyp);
+            change t with term in hyp2;
+            (rewrite hyp2; clear hyp2);
             [ unfold display_pow_linear; reduce_Pphi_pow|
              cbv [PCond condition PEeval BinList.nth BinNat.N.to_nat
                   List.hd PosDef.Pos.to_nat Init.Nat.add PosDef.Pos.iter_op]]
@@ -76,7 +78,7 @@ Ltac find_fraction dummy :=
            split;[split;[intros [? [? ?]]; easy|
           reduce_Pphi_pow] |easy ]
         ]
-        | _ => fail 1000 "find_fraction: wrong shape of result from compute_gcd"
+        | _ => fail 1000 "find_fraction fail"
       end
     end
   end.
@@ -88,5 +90,20 @@ Locate "`V[ _ ]".
 Lemma toto : PI / (PI ^ 2 + PI ^ 2) = exp 1 / (exp 1 + exp 1).
 (* find_fraction (). *)
 field_simplify_gcd fs5  / (PI / (PI ^ 2 + PI ^ 2)).
+field_simplify_gcd fs5 / (exp 1 / (exp 1 + exp 1)).
+Admitted.
 
-Timeout 1 find_fraction ().
+Lemma toto2 x : (2* x^2 + 4)/(4* x^3 - 4 * x^2 + 8*x -8 ) = 1 / (2 * x - 2).
+field_simplify_gcd fs5  / ((2* x^2 + 4)/(4* x^3 - 4 * x^2 + 8*x -8 )).
+
+reflexivity.
+admit.
+
+admit.
+Admitted.
+
+
+Lemma toto3 x : (3*x + 6 )/3 = x+2.
+Fail field_simplify_gcd fs5  / ((3*x + 6 )/3).
+
+Admitted.
