@@ -20,14 +20,6 @@ match goal with |- wrapped_result (?F, (?N',(?D', ?Gcd'))) -> _
   constr:(pair F (pair N' (pair D' Gcd')))
     end.
 
-
-(* TODO: find how to reduce Pphi_pow without reducing IZR. *)
-Ltac reduce_Pphi_pow :=
-    cbv [Pphi_pow Pphi_avoid mult_dev Peq Z.eqb P0 mkmult_c
-        mkmult_c_pos get_signZ Pos.eqb mkmult_rec List.rev' add_pow_list
-        mkmult1 List.rev_append List.hd BinNat.N.add
-        add_mult_dev mkadd_mult mkmult_c_pos mkmult_rec BinNat.N.to_nat PosDef.Pos.to_nat PosDef.Pos.iter_op List.rev' List.rev_append  List.hd List.tl add_pow_list mkmult_rec Pos.add Nat.add]. 
-
 Ltac den_gcd_n0 :=
   split;[ apply Rmult_integral_contrapositive; split;
     [apply not_eq_sym, Rlt_not_eq, Rlt_0_2 | ]| ]; apply PI_neq0.
@@ -50,7 +42,7 @@ Ltac find_fraction dummy :=
     let num_eq := fresh "equality_for_numerator" in
     let den_eq := fresh "equality_for_denumerator" in
       gcd_for_field N1 D1;
-      match goal with 
+      lazymatch goal with
         |- wrapped_result (?F ,(?N2,(?D2, ?Gcd))) -> _
         => intros _;
         assert (fact_n0 : IZR F <> 0) by (apply eq_IZR_contrapositive; easy);
@@ -86,18 +78,28 @@ Ltac find_fraction dummy :=
               end
             | reduce_Pphi_pow
             ] 
-          | easy]
+          | easy || fail 1000 "polynomial equalities should have been proved"]
        ]
-        | _ => fail 1000 "find_fraction fail"
+        | |-?G => idtac G; fail 1000 "find_fraction fail"
       end
     end
   end.
 
 Ltac fs5 := Field_simplify_gcd RField_lemma5 ltac:(find_fraction).
 
-Lemma toto : PI / (PI ^ 2 + PI ^ 2) = exp 1 / (exp 1 + exp 1).
+Lemma toto : PI / (PI ^ 2 + PI ^ 2) = 4 / 4 * PI.
 (* find_fraction (). *)
 field_simplify_gcd fs5  / (PI / (PI ^ 2 + PI ^ 2)).
+Fail field_simplify_gcd fs5 / (4 / (4 * PI)).
+admit.
+admit.
+enough (PI > 0) by lra.
+apply PI_RGT_0.
+split.
+  lra.
+  admit.
+  Unshelve.
+  compute.
 Admitted.
  Lemma toto3 x : (3*x + 6 )/3 = x+2.
  field_simplify_gcd fs5  / ((3*x + 6 )/3).
