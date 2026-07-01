@@ -8,72 +8,62 @@ Definition RField_lemma5 :=
   (@f_equal _ _ Rinv) (F2AF (Eqsth R) (Eq_ext _ _ _) Rfield) R_rm R_power_theory
   get_signZ_th (Ztriv_div_th Rset IZR).
 
-Ltac find_fraction :=
-  let t_eq := fresh "term_eq" in
-  let hyp := fresh "rewrite_lemma" in
-  intros t_eq hyp;
-  lazymatch type of t_eq with
-  | ?term = _ =>
-    clear t_eq;
-    idtac "in find_fraction" term;
-    lazymatch type of hyp with
-    | forall _ _ _ _,
-      gcd_cond _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?FV ?D _ ?N _ _ -> _
-      =>
-    let D1 := eval vm_compute in D in
-    let N1 := eval vm_compute in N in
-    idtac "debug1" D1 N1;
-    let hyp_aux := fresh "gcd_cond_proof" in
-    let fact_n0 := fresh "factor_not_0" in
-    let num_eq := fresh "equality_for_numerator" in
-    let den_eq := fresh "equality_for_denumerator" in
-      let res := constr:(ltac:(elpi factorize_by_gcd ltac_term:(N1) 
-          ltac_term:(D1))) in
-      idtac "debug5" res;
-      let F := eval cbv [fst] in (fst res) in
-      let N2 := eval cbv [fst snd] in (fst (snd res)) in
-      let D2 := eval cbv [fst snd] in (fst (snd (snd res))) in
-      let Gcd := eval cbv [snd fst] in (snd (snd (snd res))) in
-        assert (fact_n0 : IZR F <> 0) by (apply eq_IZR_contrapositive; easy);
-        enough (gcd_cond 0 1 Rplus Rmult Rminus Ropp eq 0%Z 1%Z Z.eqb IZR
-          BinNat.N.to_nat
-        pow get_signZ FV D D2 N N2 Gcd /\
-          (Pmul 0%Z 1%Z Z.add Z.mul Z.eqb (Pc F) N =
-          Pmul 0%Z 1%Z Z.add Z.mul Z.eqb N2 Gcd /\
-          Pmul 0%Z 1%Z Z.add Z.mul Z.eqb (Pc F) D =
-          Pmul 0%Z 1%Z Z.add Z.mul Z.eqb D2 Gcd)) as [hyp_aux [num_eq den_eq]];
-        [ idtac "one goal";
-          generalize (hyp F N2 D2 Gcd hyp_aux fact_n0 num_eq den_eq);
-          clear hyp_aux hyp fact_n0 num_eq den_eq;
-          let hyp2 := fresh "rewrite_lemma2" in 
-          intros hyp2;
-          match type of hyp2 with
-          | _ -> ?t = ?r =>
-            change t with term in hyp2;
-            (rewrite hyp2; clear hyp2);
-            [ unfold display_pow_linear; reduce_Pphi_pow|
-             cbv [fst snd PCond condition PEeval BinList.nth BinNat.N.to_nat
-                  List.hd PosDef.Pos.to_nat Init.Nat.add PosDef.Pos.iter_op]]
-          end
-          | idtac "other goal";
-          clear hyp fact_n0;
-          (split;       
-           [split; 
-            [
-              match goal with 
-              | |-  (_ -> _)  =>
-              intros [? [? ?]]; easy
-               | |- ?G  => try easy; intros [?[H H1]]; apply Z.eqb_eq in H1; unfold norm_subst in H; simpl in H; subst; try easy
-              end
-            | reduce_Pphi_pow
-            ] 
-          | easy || fail 1000 "polynomial equalities should have been proved"])
-            || fail 1000 "failed to prove other goal"
-       ]
-    end
-  end.
+Definition Pmul := Pmul 0%Z 1%Z Z.add Z.mul Z.eqb.
 
-Ltac fs5 := Field_simplify_gcd RField_lemma5 ltac:(find_fraction).
+(* Term is the expression that was given by the user for simplification.
+  FV is the list of sub-expressions of Term that are not recognized as
+  compound field expression (they are considered as variables).  D and N
+  are two polynomials (in type Pol Z), such that Term = N / D is already
+  proved,  but N / D is not a reduced fraction because these two polynomials
+  may have a non-trivial common divisor.
+  This tactic also assume that the goal has approximately the shape :
+  forall nfe, Fnorm FV fe = nfe ->  <some conditions> ->
+    FEeval _ .. _ fe -> Pphi_pow N / Pphi_pow D
+  where FEeval _ .. _ fe is convertible with Term.  *)
+Ltac find_fraction Term FV D N :=
+  let hyp := fresh "rewrite_lemma" in
+  intros hyp;
+  let D1 := eval vm_compute in D in
+  let N1 := eval vm_compute in N in
+  let hyp_aux := fresh "gcd_cond_proof" in
+  let fact_n0 := fresh "factor_not_0" in
+  let num_eq := fresh "equality_for_numerator" in
+  let den_eq := fresh "equality_for_denumerator" in
+  let res :=
+    constr:(ltac:(elpi factorize_by_gcd ltac_term:(N1) ltac_term:(D1))) in
+  let F := eval cbv [fst] in (fst res) in
+  let N2 := eval cbv [fst snd] in (fst (snd res)) in
+  let D2 := eval cbv [fst snd] in (fst (snd (snd res))) in
+  let Gcd := eval cbv [snd fst] in (snd (snd (snd res))) in
+  assert (fact_n0 : IZR F <> 0) by (apply eq_IZR_contrapositive; easy);
+  enough (gcd_cond 0 1 Rplus Rmult Rminus Ropp eq 0%Z 1%Z Z.eqb IZR
+    BinNat.N.to_nat
+  pow get_signZ FV D D2 N N2 Gcd /\ (Peq Z.eqb (Pmul (Pc F) N) (Pmul N2 Gcd) = true
+    /\
+    Peq Z.eqb (Pmul (Pc F) D) (Pmul D2 Gcd) = true)) as [hyp_aux [num_eq den_eq]];
+    [let hyp2 := fresh "rewrite_lemma2" in
+    (assert (hyp2 := hyp F N2 D2 Gcd hyp_aux fact_n0 num_eq den_eq)
+      || idtac "assert failed");
+    clear hyp_aux hyp fact_n0 num_eq den_eq;
+    match type of hyp2 with
+    | _ -> ?t = _ =>
+      change t with Term in hyp2;
+      (rewrite hyp2; clear hyp2);
+      [ unfold display_pow_linear; reduce_Pphi_pow|
+        cbv [fst snd PCond condition PEeval BinList.nth BinNat.N.to_nat
+            List.hd PosDef.Pos.to_nat Init.Nat.add PosDef.Pos.iter_op]]
+    end
+    |clear hyp fact_n0;
+    (split;[ unfold gcd_cond; reduce_Pphi_pow
+    | easy || fail 1000 "the oracle returned wrong polynomials"])
+      || fail 1000 "failed to prove other goal"
+  ].
+
+
+Definition Nnorm :=
+  norm_subst (0%Z) (1%Z) Z.add Z.mul Z.sub Z.opp Z.eqb Z.div_eucl.
+
+Ltac fs5 := Field_simplify_gcd Nnorm RField_lemma5 ltac:(find_fraction).
 
 Lemma happy_life : PI / (PI ^ 2 + PI ^ 2) = 4 / (8 * PI).
 Proof.
@@ -105,10 +95,11 @@ Lemma field_solution :
   exp (PI / (PI ^ 2 + PI ^ 2)) = exp (4 / (8 * PI)).
 Proof.
 assert (PI_GT0 := PI_RGT_0).
-
-field_simplify_gcd fs5  / (PI / (PI ^ 2 + PI ^ 2)) (4 / (8 * PI)).
 Fail field.
-field_simplify_gcd fs5 / (4 / (8 * PI)).
-field.
-all: try nra.
+field_simplify_gcd fs5  / (PI / (PI ^ 2 + PI ^ 2)) (4 / (8 * PI)).
+easy.
+nra.
+nra.
+nra.
+nra.
 Qed.
