@@ -179,13 +179,13 @@ compute_multipliers G D N G' D' N' M :-
   M is LCMND * LCMG.
 
 % encoding func, decoding func, N , D -> N', D', Gcd, LCM
-func gcd_and_factors (func term -> polyT), (func polyT -> term), term, term -> term, term, term, term.
-gcd_and_factors Encoder Decoder N D Ne De Gcd' MZ :-
-  Encoder N Nx,
-  Encoder D Dx,
+func gcd_and_factors term, term -> term, term, term, term.
+gcd_and_factors N D Ne De Gcd' MZ :-
+  pol_encode N Nx,
+  pol_encode D Dx,
   gcd_poly Nx Dx Gcd Ne' De',
   compute_multipliers Gcd Ne' De' G' N' D' M,
-  Decoder N' Ne,
-  Decoder D' De,
-  Decoder G' Gcd',
+  pe_decode N' Ne,
+  pe_decode D' De,
+  pe_decode G' Gcd',
   z_decode M MZ.
