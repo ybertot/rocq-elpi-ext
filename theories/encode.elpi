@@ -78,6 +78,8 @@ pe_decode (mul X (pcst (rat (-1) 1))) {{PEopp lp:Y}} :- !,
   pe_decode X Y.
 pe_decode (mul (pcst (rat (-1) 1)) X) {{PEopp lp:Y}} :- !,
   pe_decode X Y.
+pe_decode (mul X X) {{@PEpow Z lp:Z (Npos 2%positive)}} :- !,
+  pe_decode X Z.
 pe_decode (mul X Y) {{@PEpow Z lp:Z (Npos lp:N1)}}:-
   pe_decode Y {{@PEpow Z lp:Z (Npos lp:N)}},
   pos_encode N N',
@@ -92,8 +94,6 @@ pe_decode (mul Y X) {{@PEpow Z lp:Z (Npos lp:N1)}}:-
   pe_decode X Z,!.
 pe_decode (mul P1 P2) {{PEmul lp:X1 lp:X2}} :- !,
   pe_decode P1 X1, pe_decode P2 X2.
-pe_decode P1 {{@PEpow Z lp:X (Npos 1%positive)}} :-
- pe_decode P1 X.
 
 % encoding func, decoding func, N , D -> N', D', Gcd, LCM
 func gcd_and_factors term, term -> term, term, term, term.
