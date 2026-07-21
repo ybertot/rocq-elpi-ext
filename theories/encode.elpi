@@ -95,96 +95,12 @@ pe_decode (mul P1 P2) {{PEmul lp:X1 lp:X2}} :- !,
 pe_decode P1 {{@PEpow Z lp:X (Npos 1%positive)}} :-
  pe_decode P1 X.
 
-func gcd_int int, int -> int.
-gcd_int A B G :-
-A < 0 ,!, 
-gcd_int (0 - A) B G.
-gcd_int A B G :-
-B < 0,!, 
-gcd_int A (0 - B) G.
-gcd_int 0 0 1 :-!.
-gcd_int A 0 A :-!.
-gcd_int 0 B B :-!.
-gcd_int A B G :-
-  C is A mod B,
-  gcd_int B C G.
-
-
-func lcm_int int, int -> int.
-lcm_int A B C :-
-  gcd_int A B G,
-  C is ((A * B) div G).
-
-func collect_glob_lcm term, int -> int.
-collect_glob_lcm {{FEO}} I I :- !.
-collect_glob_lcm {{FEI}} I I :- !.
-collect_glob_lcm {{@FEadd Z lp:X1 lp:X2}} L LCM :- !,
-  collect_glob_lcm X1 L L', collect_glob_lcm X2 L' LCM.
-collect_glob_lcm {{@FEmul Z lp:X1 lp:X2}} L LCM :- !,
-  collect_glob_lcm X1 L L', collect_glob_lcm X2 L' LCM.
-collect_glob_lcm {{@FEc Z lp:C}} L LCM :-
-  z_encode C I, !,
-  lcm_int I L LCM.
-collect_glob_lcm _ L L.
-
-func collect_glob_lcm_poly polyT, int -> int.
-collect_glob_lcm_poly (pcst (rat 0 _)) I I :- !.
-collect_glob_lcm_poly (pcst (rat N N)) I I :- !.
-collect_glob_lcm_poly (pcst (rat _ 1)) I I :- !.
-collect_glob_lcm_poly (pcst (rat _ I)) L LCM :- !,
-  lcm_int I L LCM.
-collect_glob_lcm_poly (mul P1 P2) L LCM :- !,
-  collect_glob_lcm_poly P1 L L', collect_glob_lcm_poly P2 L' LCM.
-collect_glob_lcm_poly (add P1 P2) L LCM :- !,
-  collect_glob_lcm_poly P1 L L', collect_glob_lcm_poly P2 L' LCM.
-collect_glob_lcm_poly _ L L.
-
-func multiply_lcm_poly polyT, int -> polyT.
-multiply_lcm_poly (pcst (rat 0 _)) _ (pcst (rat 0 1)) :- !.
-multiply_lcm_poly (pcst (rat N N)) L (pcst (rat L 1)) :- !.
-multiply_lcm_poly (pcst (rat Num 1)) L (pcst (rat Num' 1))  :- !,
-  Num' is Num * L.
-
-multiply_lcm_poly (pcst (rat Num Denom)) L (pcst (rat N' 1)) :- !,
-  M is L div Denom,
-  N' is Num * M.
-
-multiply_lcm_poly (mul P1 P2) L (mul P1' P2') :- !,
-  multiply_lcm_poly P1 L P1', multiply_lcm_poly P2 L P2'.
-
-multiply_lcm_poly (add P1 P2) L (add P1' P2') :- !,
-  multiply_lcm_poly P1 L P1', multiply_lcm_poly P2 L P2'.
-
-multiply_lcm_poly P _ P.
-
-func multiply_if_gt_one polyT, int -> polyT.
-multiply_if_gt_one P N P1 :-
-  N > 1, !,
-  multiply_lcm_poly P N P1.
-multiply_if_gt_one P _ P.
-
-% compute_multipliers G, D, N -> G' D' N' M
-% G' * D' = M * G * D and G' * N' = M * G * D
-% M is a non-zero integer and G', D', and N' only have integer coefficient
-% while G, D, and N where polynomials with rational coefficients
-func compute_multipliers polyT, polyT, polyT -> polyT, polyT, polyT, int.
-compute_multipliers G D N G' D' N' M :-
-  collect_glob_lcm_poly N 1 LCMN,
-  collect_glob_lcm_poly D 1 LCMD,
-  collect_glob_lcm_poly G 1 LCMG,
-  lcm_int LCMN LCMD LCMND,
-  multiply_if_gt_one N LCMND N',
-  multiply_if_gt_one D LCMND D',
-  multiply_if_gt_one G LCMG G',
-  M is LCMND * LCMG.
-
 % encoding func, decoding func, N , D -> N', D', Gcd, LCM
 func gcd_and_factors term, term -> term, term, term, term.
 gcd_and_factors N D Ne De Gcd' MZ :-
   pol_encode N Nx,
   pol_encode D Dx,
-  gcd_poly Nx Dx Gcd Ne' De',
-  compute_multipliers Gcd Ne' De' G' N' D' M,
+  gcd_poly Nx Dx M G' N' D',
   pe_decode N' Ne,
   pe_decode D' De,
   pe_decode G' Gcd',

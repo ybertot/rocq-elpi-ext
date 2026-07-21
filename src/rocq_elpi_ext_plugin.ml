@@ -43,12 +43,14 @@ let gcd_poly_api =
     let ty = poly_ in
     BuiltIn.MLCode(Pred ("gcd_poly",
     In(ty, "p1", In(ty, "p2",
+    Out(API.BuiltInData.int, "factor",
     Out(ty, "gcd",Out (ty, "p1_div",Out (ty, "p2_div",
     Easy("gcd is the greatest common divisor of polynomials p1 and p2," ^
-         " p1_div is p1/gcd, p2_div is p2/gcd")))))),
-    fun a b _ _ _ ~depth ->
+         "up to an integer factor \n" ^
+         " p1_div is (factor * p1)/gcd, p2_div is (factor * p2)/gcd"))))))),
+    fun a b _ _ _ _ ~depth ->
       (match Gcd.poly_gcd a b with
-        (v1, v2, v3) -> !: v1 +! v2 +! v3)),
+        (v1, v2, v3, v4) -> !: v1 +! v2 +! v3 +! v4)),
     DocAbove)
 
 let builtins =

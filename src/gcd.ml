@@ -44,6 +44,26 @@ let mono_normalise m =
              (List.filter (fun (_, e) -> e <> 0) m.exps) }
 
 (* ══════════════════════════════════════════════════════════════════════
+   multiplying polynomials to obtain polynomials with integer
+   coefficients
+   ══════════════════════════════════════════════════════════════════════ *)
+
+let lcm m n = (m / gcd m n) * n
+
+let rec mpoly_factor (acc : int) (mp : mpoly) =
+    match mp with
+    | [] -> acc
+    | {coef = {den = d}} :: l -> mpoly_factor (lcm acc d) l
+
+(* This is scalar multiplication by den_lcm. *)
+let rec mult_lcm (den_lcm : int) (m : mpoly) =
+  match m with
+  | [] -> []
+  | {coef = {num = n; den = d}; exps = e}:: l ->
+    {coef = {num = n * (den_lcm / d); den = 1}; exps = e} ::
+    mult_lcm den_lcm l
+
+(* ══════════════════════════════════════════════════════════════════════
    poly -> mpoly
    ══════════════════════════════════════════════════════════════════════ *)
 let rec to_mpoly = function
@@ -394,14 +414,21 @@ let poly_gcd_and_lcm (p: poly) (q: poly) : poly * poly =
 
 let poly_gcd_raw (p: poly) (q: poly) : poly = fst (poly_gcd_and_lcm p q)
 
-let poly_gcd (p: poly) (q: poly) : poly * poly * poly =
+let poly_gcd (p: poly) (q: poly) : int * poly * poly * poly =
   let mp = normalise_lex (collect (to_mpoly p)) in
   let mq = normalise_lex (collect (to_mpoly q)) in
   let gcd = poly_gcd_raw p q in
   let mgcd = normalise_lex (collect (to_mpoly gcd)) in
   let mp1 =  normalise_lex (div_mpoly mp mgcd) in
   let mq1 =  normalise_lex (div_mpoly mq mgcd) in
-  (gcd, mpoly_to_poly mp1, mpoly_to_poly mq1)
+  let lcmg = mpoly_factor 1 mgcd in
+  let lcmp1 = mpoly_factor 1 mp1 in
+  let lcmq1 = mpoly_factor 1 mq1 in
+  let lcmpq = lcm lcmp1 lcmq1 in
+  let factor = lcmg * lcmpq in
+  (factor, mpoly_to_poly (mult_lcm lcmg mgcd), 
+   mpoly_to_poly (mult_lcm lcmpq mp1),
+   mpoly_to_poly (mult_lcm lcmpq mq1))
 
 (* ══════════════════════════════════════════════════════════════════════
    Example

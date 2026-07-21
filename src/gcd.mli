@@ -7,4 +7,4 @@ val rat_is_zero : rat -> bool
 
 type poly = Const of rat | Var of int | Add of poly * poly | Mul of poly * poly
 
-val poly_gcd : poly -> poly -> poly * poly * poly
+val poly_gcd : poly -> poly -> int * poly * poly * poly
