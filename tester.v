@@ -67,6 +67,7 @@ Elpi Accumulate Plugin "ext.elpi".
 Elpi Accumulate File encode.
 
 Elpi Query lp:{{
+  sigma P Q R T1 V1 T2 V2 V1_w V2_w M Gcd' Ne' De' Ne De Gcd LCMZ\
   P = {{@PEadd Z (@PEc Z (-1)%Z) (@PEmul Z (@PEc Z 4%Z) 
        (@PEpow Z (PEX Z 1) (Npos 2)))}},
   Q = {{@PEadd Z (@PEc Z 1%Z) (@PEmul Z (@PEc Z 2%Z)
@@ -76,15 +77,15 @@ Elpi Query lp:{{
   coq.reduction.vm.norm {{Nnorm 19 nil lp:Q}} T2 V2,
   pol_encode V1 V1_w,!,
   pol_encode V2 V2_w,
-  gcd_poly V1_w V2_w M Gcd Ne' De',
-  pe_decode N' Ne
-  % pe_decode D' De,
-  % pe_decode G' Gcd',
-  % z_decode M LCMZ,
-  % coq.term->string Ne Nes,
-  % coq.term->string De Des,
-  % coq.term->string Gcd' Gcds,
-  % coq.term->string LCMZ LCMs
+  gcd_poly V1_w V2_w M Gcd' Ne' De',
+  pe_decode Ne' Ne,
+  pe_decode De' De,
+  pe_decode Gcd' Gcd,
+  z_decode M LCMZ,
+  coq.term->string Ne Nes,
+  coq.term->string De Des,
+  coq.term->string Gcd Gcds,
+  coq.term->string LCMZ LCMs
   % gcd_and_factors pol_encode pe_decode V1 V2 A B C M
 }}.
 
