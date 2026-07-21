@@ -23,18 +23,18 @@ func p_inj int, polyT -> polyT.
 p_inj 0 P P :- !.
 p_inj N (pcst R) (pcst R) :- N > 0, !.
 p_inj N (var V) (var V') :- N > 0, !, V' is V + N.
-p_inj N (add P Q) (add P' Q') :- N > 0, !, 
-  p_inj N P P', 
+p_inj N (add P Q) (add P' Q') :- N > 0, !,
+  p_inj N P P',
   p_inj N Q Q'.
-p_inj N (mul P Q) (mul P' Q') :- N > 0, !, 
-  p_inj N P P', 
+p_inj N (mul P Q) (mul P' Q') :- N > 0, !,
+  p_inj N P P',
   p_inj N Q Q'.
 
 func pow_x int -> polyT.
 pow_x 0 (pcst (rat 1 1)) :- !.
 pow_x N (var 1) :- N = 1, !.
-pow_x N (mul X Y) :- N > 1, !, 
-  N1 is N - 1, 
+pow_x N (mul X Y) :- N > 1, !,
+  N1 is N - 1,
   pow_x N1 Y,
   X = (var 1).
 
@@ -62,7 +62,7 @@ pe_decode (pcst (rat Num 1)) {{@PEc Z lp:Num1 }} :- !,
   z_decode Num Num1.
 pe_decode (var Y) {{@PEX Z lp:X}} :- !,
  pos_decode Y X.
-pe_decode (add P1 P2) X1 :- 
+pe_decode (add P1 P2) X1 :-
    pe_decode P2 {{PEO}}, !, pe_decode P1 X1.
 pe_decode (add P1 P2) X2 :-
   pe_decode P1 {{PEO}}, !, pe_decode P2 X2.
@@ -98,7 +98,7 @@ pe_decode (mul P1 P2) {{PEmul lp:X1 lp:X2}} :- !,
 func pe_decode_naive polyT -> term.
 pe_decode_naive (pcst (rat Num 1)) {{@PEc Z lp:Num1 }} :- !,
   z_decode Num Num1.
-pe_decode_naive (pcst V) _ :- !, 
+pe_decode_naive (pcst V) _ :- !,
   coq.error "Polynomial contains a non-integer rational" V.
 pe_decode_naive (var Y) {{@PEX Z lp:X}} :- !,
  pos_decode Y X.
