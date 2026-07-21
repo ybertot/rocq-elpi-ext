@@ -430,6 +430,10 @@ let poly_gcd (p: poly) (q: poly) : int * poly * poly * poly =
    mpoly_to_poly (mult_lcm lcmpq mp1),
    mpoly_to_poly (mult_lcm lcmpq mq1))
 
+let expensive_id (p : poly) : poly =
+    let mp = normalise_lex (collect (to_mpoly p)) in
+    mpoly_to_poly mp
+
 (* ══════════════════════════════════════════════════════════════════════
    Example
    ══════════════════════════════════════════════════════════════════════ *)

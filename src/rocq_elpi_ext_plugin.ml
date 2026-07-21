@@ -53,9 +53,16 @@ let gcd_poly_api =
         (v1, v2, v3, v4) -> !: v1 +! v2 +! v3 +! v4)),
     DocAbove)
 
+let expensive_id_api =
+  let ty = poly_ in
+  BuiltIn.MLCode(Pred ("expensive_id", In(ty, "",
+    (Out(ty, "", Easy("identity function")))),
+    fun a _ ~depth -> !: (expensive_id a)), DocAbove)
+
 let builtins =
   API.BuiltIn.declare ~file_name:"ext.elpi" [
   MLData rat_;
   MLData poly_;
   gcd_poly_api;
+  expensive_id_api
 ]
