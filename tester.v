@@ -17,14 +17,16 @@ Lemma field_unhappy : 1 + exp (PI / (PI ^ 2 + PI ^ 2)) =
   exp (4 / (8 * PI)) + 1.
 Proof.
 Fail field.
-replace (PI / (PI ^ 2 + PI ^ 2)) with (4 / (8 * PI)) by (field; nra).
+replace (PI / (PI ^ 2 + PI ^ 2)) with
+  (4 / (8 * PI)) by (field; nra).
 ring.
 Qed.
 
 Lemma ring_happy :
-  exp (2 * PI + 1) = exp (1 + PI + PI).
+  1 + exp (2 * PI + 1) = exp (1 + PI + PI) + 1.
 Proof.
-ring_simplify (2 * PI + 1) (1 + PI + PI); ring.
+ring_simplify (2 * PI + 1) (1 + PI + PI).
+ring.
 Qed.
 
 Lemma field_still_unhappy :
@@ -54,7 +56,7 @@ field_simplify' (9 * PI / 18);[ | nra ..].
 easy.
 Qed.
 
-Lemma polynomial_division x : 0 < x -> 
+Lemma polynomial_division x : 0 < x ->
   exp ((x ^  2 - /((4 - 1) / 3)) / (x + 1)) =
     2 * (exp (x - 1) / 3 + exp (x - 1) / 6).
 Proof.
@@ -99,7 +101,7 @@ Elpi Query lp:{{
 
 Elpi Query lp:{{
   sigma P Q R T1 V1 T2 V2 V1_w V2_w M Gcd' Ne' De' Ne De Gcd LCMZ\
-  P = {{@PEadd Z (@PEc Z (-1)%Z) (@PEmul Z (@PEc Z 4%Z) 
+  P = {{@PEadd Z (@PEc Z (-1)%Z) (@PEmul Z (@PEc Z 4%Z)
        (@PEpow Z (PEX Z 1) (Npos 2)))}},
   Q = {{@PEadd Z (@PEc Z 1%Z) (@PEmul Z (@PEc Z 2%Z)
         (PEX Z 1))}},
