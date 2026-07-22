@@ -80,6 +80,23 @@ From elpi.ext Extra Dependency "encode.elpi" as encode.
 Elpi Accumulate Plugin "ext.elpi".
 Elpi Accumulate File encode.
 
+
+Elpi Query lp:{{
+  sigma P R V1 V1' V2_rocq P1 R1\
+  P = {{@PEadd Z (@PEpow Z (@PEadd Z (@PEc Z (-1)%Z) (@PEmul Z (@PEc Z 4%Z) (PEX Z 1)))
+         (Npos 2)) (@PEmul Z (@PEc Z (-9)%Z) (@PEmul Z (PEX Z 2) (PEX Z 2)))
+  }},
+  R = {{Nnorm 19 nil lp:P}},
+  coq.reduction.vm.norm R {{Pol Z}} V1,
+  pol_encode V1 V1',
+  expensive_id V1' V2,
+  pe_decode V2 V2_rocq,
+  P1 = {{@PEadd Z lp:P (@PEmul Z (PEc (-1)%Z) lp:V2_rocq)}},
+  R1 = {{Nnorm 19 nil lp:P1}},
+  coq.reduction.vm.norm R1 _ V3,
+  V3 = {{@Pc Z 0%Z}}
+}}.
+
 Elpi Query lp:{{
   sigma P Q R T1 V1 T2 V2 V1_w V2_w M Gcd' Ne' De' Ne De Gcd LCMZ\
   P = {{@PEadd Z (@PEc Z (-1)%Z) (@PEmul Z (@PEc Z 4%Z) 
@@ -103,17 +120,3 @@ Elpi Query lp:{{
   % gcd_and_factors pol_encode pe_decode V1 V2 A B C M
 }}.
 
-Elpi Query lp:{{
-  sigma P R V1 V1' V2_rocq P1 R1\
-  P = {{@PEadd Z (@PEpow Z (@PEadd Z (@PEc Z (-1)%Z) (@PEmul Z (@PEc Z 4%Z) (PEX Z 1)))
-         (Npos 2)) (@PEmul Z (@PEc Z (-9)%Z) (@PEmul Z (PEX Z 2) (PEX Z 2)))
-  }},
-  R = {{Nnorm 19 nil lp:P}},
-  coq.reduction.vm.norm R {{Pol Z}} V1,
-  pol_encode V1 V1',
-  expensive_id V1' V2,
-  pe_decode V2 V2_rocq,
-  P1 = {{@PEadd Z lp:P (@PEmul Z (PEc (-1)%Z) lp:V2_rocq)}},
-  R1 = {{Nnorm 19 nil lp:P1}},
-  coq.reduction.vm.norm R1 _ V3
-}}.
