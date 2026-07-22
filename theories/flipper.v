@@ -45,13 +45,17 @@ Ltac reduce_PCond :=
 (* Term is the expression that was given by the user for simplification.
   FV is the list of sub-expressions of Term that are not recognized as
   compound field expression (they are considered as variables).  D and N
-  are two polynomials (in type Pol Z), such that Term = N / D is already
-  proved,  but N / D is not a reduced fraction because these two polynomials
-  may have a non-trivial common divisor.
+  are two polynomials (in type Pol Z), such that
+    Term = Pphi_pow FV  N / Pphi_pow FV D
+  is already guaranteed,  but N / D is not a reduced fraction because these
+  two polynomials ay have a non-trivial common divisor.
   This tactic also assume that the goal has approximately the shape :
-  forall nfe, Fnorm FV fe = nfe ->  PCond <some list> ->
-    FEeval _ .. _ fe -> Pphi_pow N / Pphi_pow D
-  where FEeval _ .. _ fe is convertible with Term.  *)
+  (forall m num' den' gcd, IZR m <> 0 ->
+    <<Pc m * N = num' * gcd>> ->
+    <<Pc m * D = den' * gcd>> ->  PCond <some list> ->
+    FEeval _ .. _ fe = Pphi_pow N / Pphi_pow D) -> ...
+  where the equalities between << >> are expressed in much longer
+  form and FEeval _ .. _ FV fe is convertible with Term.  *)
 Ltac fraction_finisher Term FV D N :=
 let hyp := fresh "rewrite_lemma" in intros hyp;
 let hyp2 := fresh "rew_l2" in
@@ -71,5 +75,16 @@ change t with Term in hyp2;
   [reduce_Pphi_pow | easy| easy | easy| reduce_PCond]
 end.
 
-
 Ltac fs5 := Field_simplify_gcd Nnorm RField_lemma5 ltac:(fraction_finisher).
+
+(** field_simplify' formuula1 formula2 ...
+  Simplify formulas according to field calculation laws.
+  unlike field_simplify, this tactic does not take a list of hypotheses
+  as argument.
+  This version provides more simplified resulting formulas, since the
+  these resulting formulas are *reduced* polynomial fractions. *)
+Tactic Notation (at level 0) "field_simplify'" constr_list(rl) :=
+  let G := Get_goal in
+  field_lookup
+    (PackField ltac:(Field_simplify_gcd Nnorm RField_lemma5 fraction_finisher))
+    [] rl G.
