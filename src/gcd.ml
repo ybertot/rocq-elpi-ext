@@ -72,7 +72,7 @@ let rec mult_lcm (den_lcm : int) (m : mpoly) =
    poly -> rat_poly
    ══════════════════════════════════════════════════════════════════════ *)
 let rec to_rat_poly = function
-  | Const i -> Rconst {num = i; den = 0}
+  | Const i -> Rconst {num = i; den = 1}
   | Var x -> Rvar x
   | Add (p, q) -> Radd (to_rat_poly p, to_rat_poly q)
   | Mul (p, q) -> Rmul (to_rat_poly p, to_rat_poly q)
