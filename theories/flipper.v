@@ -6,6 +6,8 @@ From Stdlib Require Import Field Ring_polynom Reals.
 Import List.
 Open Scope R_scope.
 
+Definition norm := norm_aux 0%Z 1%Z Z.add Z.mul Z.sub Z.opp Z.eqb.
+
 Elpi Tactic factorize_by_gcd.
 Elpi Accumulate Plugin "ext.elpi".
 Elpi Accumulate File encode.

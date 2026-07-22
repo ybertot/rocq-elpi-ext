@@ -31,7 +31,7 @@ p_inj N (mul P Q) (mul P' Q') :- N > 0, !,
   p_inj N Q Q'.
 
 func pow_x int -> polyT.
-pow_x 0 (pcst (rat 1 1)) :- !.
+pow_x 0 (pcst 1) :- !.
 pow_x N (var 1) :- N = 1, !.
 pow_x N (mul X Y) :- N > 1, !,
   N1 is N - 1,
@@ -39,7 +39,7 @@ pow_x N (mul X Y) :- N > 1, !,
   X = (var 1).
 
 func pol_encode term -> polyT.
-pol_encode {{Pc lp:C}} (pcst (rat C1 1)) :- !,
+pol_encode {{Pc lp:C}} (pcst C1) :- !,
   z_encode C C1.
 
 pol_encode {{Pinj lp:J lp:Q}} P' :- !,
@@ -56,9 +56,9 @@ pol_encode {{PX lp:P lp:I lp:Q}} (add PXpart Qpart) :- !,
   p_inj 1 EncodedQ Qpart.
 
 func pe_decode polyT -> term.
-pe_decode (pcst (rat 0 _)) {{PEO}} :- !.
-pe_decode (pcst (rat N N)) {{PEI}} :- !.
-pe_decode (pcst (rat Num 1)) {{@PEc Z lp:Num1 }} :- !,
+pe_decode (pcst 0) {{PEO}} :- !.
+pe_decode (pcst 1) {{PEI}} :- !.
+pe_decode (pcst Num) {{@PEc Z lp:Num1 }} :- !,
   z_decode Num Num1.
 pe_decode (var Y) {{@PEX Z lp:X}} :- !,
  pos_decode Y X.
@@ -66,17 +66,17 @@ pe_decode (add P1 P2) X1 :-
    pe_decode P2 {{PEO}}, !, pe_decode P1 X1.
 pe_decode (add P1 P2) X2 :-
   pe_decode P1 {{PEO}}, !, pe_decode P2 X2.
-pe_decode (add P1 (mul (pcst (rat (-1) 1)) P2)) {{PEsub lp:X1 lp:X2}} :- !,
+pe_decode (add P1 (mul (pcst (-1)) P2)) {{PEsub lp:X1 lp:X2}} :- !,
   pe_decode P1 X1, pe_decode P2 X2.
 pe_decode (add P1 P2) {{@PEadd Z lp:X1 lp:X2}} :- !,
   pe_decode P1 X1, pe_decode P2 X2 .
-pe_decode (mul (pcst (rat 1 1)) X) Y :- !,
+pe_decode (mul (pcst 1) X) Y :- !,
   pe_decode X Y.
-pe_decode (mul X (pcst (rat 1 1))) Y :- !,
+pe_decode (mul X (pcst 1)) Y :- !,
   pe_decode X Y.
-pe_decode (mul X (pcst (rat (-1) 1))) {{PEopp lp:Y}} :- !,
+pe_decode (mul X (pcst (-1))) {{PEopp lp:Y}} :- !,
   pe_decode X Y.
-pe_decode (mul (pcst (rat (-1) 1)) X) {{PEopp lp:Y}} :- !,
+pe_decode (mul (pcst (-1)) X) {{PEopp lp:Y}} :- !,
   pe_decode X Y.
 pe_decode (mul X X) {{@PEpow Z lp:Z (Npos 2%positive)}} :- !,
   pe_decode X Z.
@@ -96,10 +96,8 @@ pe_decode (mul P1 P2) {{PEmul lp:X1 lp:X2}} :- !,
   pe_decode P1 X1, pe_decode P2 X2.
 
 func pe_decode_naive polyT -> term.
-pe_decode_naive (pcst (rat Num 1)) {{@PEc Z lp:Num1 }} :- !,
+pe_decode_naive (pcst Num) {{@PEc Z lp:Num1 }} :- !,
   z_decode Num Num1.
-pe_decode_naive (pcst V) _ :- !,
-  coq.error "Polynomial contains a non-integer rational" V.
 pe_decode_naive (var Y) {{@PEX Z lp:X}} :- !,
  pos_decode Y X.
 pe_decode_naive (add P1 P2) {{@PEadd Z lp:X1 lp:X2}} :- !,
@@ -110,8 +108,7 @@ pe_decode_naive (mul P1 P2) {{@PEmul Z lp:X1 lp:X2}} :- !,
 func pol_decode polyT -> term.
 pol_decode PolyT_a Result:-
   pe_decode_naive PolyT_a Pe_a,
-  T = {{norm_aux 0%Z 1%Z Z.add Z.mul Z.sub Z.opp Z.eqb lp:Pe_a}},
-  coq.reduction.vm.norm T {{Pol Z}} Result.
+  coq.reduction.vm.norm {{norm lp:Pe_a}} {{Pol Z}} Result.
 
 % encoding func, decoding func, N , D -> N', D', Gcd, LCM
 func gcd_and_factors term, term -> term, term, term, term.
