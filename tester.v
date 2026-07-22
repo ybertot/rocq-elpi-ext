@@ -64,6 +64,14 @@ field.
 nra.
 Qed.
 
+Lemma in_cos_example : cos (2 * PI / 4) = cos (PI / 2).
+Proof.
+Fail progress field_simplify (2 * PI / 4) (PI / 2).
+field_simplify' (2 * PI / 4) (PI / 2).
+easy.
+all:nra.
+Qed.
+
 End add_PI_knowledge.
 
 Elpi Tactic test_sandbox.
