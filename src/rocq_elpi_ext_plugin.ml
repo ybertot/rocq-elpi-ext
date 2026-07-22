@@ -7,7 +7,7 @@ open ContextualConversion
 let rat_ = AlgebraicData.declare {
   ty = TyName "ratT";
   doc = "a type of rational numbers viewed as pairs of int values";
-  pp = (fun fmt _ -> Format.fprintf fmt "<todo>");
+  pp = pp_rat;
   constructors = [
     K("rat","numerator then denumerator",
       A(BuiltInData.int,A (BuiltInData.int, N)),
@@ -19,7 +19,7 @@ let poly_ = AlgebraicData.declare {
   ty = TyName "polyT";
   doc = "A type of ring expressions, simply with numeric constants," ^
         " variables, addition, and multiplication";
-  pp = (fun fmt _ -> Format.fprintf fmt "<todo>");
+  pp = pp_poly;
   constructors = [
     K("pcst","constant polynomial", A(rat_, N),
       B (fun n -> Const n),

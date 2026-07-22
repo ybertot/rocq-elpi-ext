@@ -2,6 +2,7 @@
    Rational numbers
    ══════════════════════════════════════════════════════════════════════ *)
 type rat = { num: int; den: int }
+[@@deriving show]
 
 let rat_zero = { num = 0; den = 1 }
 let rat_one  = { num = 1; den = 1 }
@@ -30,6 +31,7 @@ let rat_is_zero r = r.num = 0
    Poly type
    ══════════════════════════════════════════════════════════════════════ *)
 type poly = Const of rat | Var of int | Add of poly * poly | Mul of poly * poly
+[@@deriving show]
 
 (* ══════════════════════════════════════════════════════════════════════
    Internal monomial representation
