@@ -4,24 +4,13 @@ open Gcd
 open API
 open ContextualConversion
 
-let rat_ = AlgebraicData.declare {
-  ty = TyName "ratT";
-  doc = "a type of rational numbers viewed as pairs of int values";
-  pp = pp_rat;
-  constructors = [
-    K("rat","numerator then denumerator",
-      A(BuiltInData.int,A (BuiltInData.int, N)),
-      B (fun n d -> { num = n; den = d }),
-      M (fun ~ok ~ko t -> match t with { num = n; den = d } -> ok n d ))]
-} |> (!<)
-
 let poly_ = AlgebraicData.declare {
   ty = TyName "polyT";
   doc = "A type of ring expressions, simply with numeric constants," ^
         " variables, addition, and multiplication";
   pp = pp_poly;
   constructors = [
-    K("pcst","constant polynomial", A(rat_, N),
+    K("pcst","constant polynomial", A(BuiltInData.int, N),
       B (fun n -> Const n),
       M (fun ~ok ~ko t -> match t with Const r -> ok r | _ -> ko ()));
     K("var","indexed variable",A (BuiltInData.int, N),
@@ -61,7 +50,6 @@ let expensive_id_api =
 
 let builtins =
   API.BuiltIn.declare ~file_name:"ext.elpi" [
-  MLData rat_;
   MLData poly_;
   gcd_poly_api;
   expensive_id_api

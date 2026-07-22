@@ -30,7 +30,10 @@ let rat_is_zero r = r.num = 0
 (* ══════════════════════════════════════════════════════════════════════
    Poly type
    ══════════════════════════════════════════════════════════════════════ *)
-type poly = Const of rat | Var of int | Add of poly * poly | Mul of poly * poly
+type rat_poly =
+  Rconst of rat | Rvar of int | Radd of rat_poly * rat_poly 
+  | Rmul of rat_poly * rat_poly
+type poly = Const of int | Var of int | Add of poly * poly | Mul of poly * poly
 [@@deriving show]
 
 (* ══════════════════════════════════════════════════════════════════════
@@ -66,13 +69,22 @@ let rec mult_lcm (den_lcm : int) (m : mpoly) =
     mult_lcm den_lcm l
 
 (* ══════════════════════════════════════════════════════════════════════
-   poly -> mpoly
+   poly -> rat_poly
+   ══════════════════════════════════════════════════════════════════════ *)
+let rec to_rat_poly = function
+  | Const i -> Rconst {num = i; den = 0}
+  | Var x -> Rvar x
+  | Add (p, q) -> Radd (to_rat_poly p, to_rat_poly q)
+  | Mul (p, q) -> Rmul (to_rat_poly p, to_rat_poly q)
+
+(* ══════════════════════════════════════════════════════════════════════
+   rat_poly -> mpoly
    ══════════════════════════════════════════════════════════════════════ *)
 let rec to_mpoly = function
-  | Const r      -> if rat_is_zero r then [] else [{ coef = r; exps = [] }]
-  | Var x        -> [{ coef = rat_one; exps = [(x, 1)] }]
-  | Add (p, q)   -> to_mpoly p @ to_mpoly q
-  | Mul (p, q)   ->
+  | Rconst r      -> if rat_is_zero r then [] else [{ coef = r; exps = [] }]
+  | Rvar x        -> [{ coef = rat_one; exps = [(x, 1)] }]
+  | Radd (p, q)   -> to_mpoly p @ to_mpoly q
+  | Rmul (p, q)   ->
     List.concat_map (fun a ->
       List.map (fun b ->
         let rec merge xs ys = match xs, ys with
@@ -85,6 +97,20 @@ let rec to_mpoly = function
         mono_normalise { coef = rat_mul a.coef b.coef; exps = merge a.exps b.exps }
       ) (to_mpoly q)
     ) (to_mpoly p)
+
+(* ══════════════════════════════════════════════════════════════════════
+   rat_poly -> poly
+   ══════════════════════════════════════════════════════════════════════ *)
+let rec rat_poly_to_poly = function
+  | Rconst {num = n; den = d} ->
+      if d = 1 then
+        Const n
+      else
+        failwith
+          "rat_poly_to_poly was given input with non-integer coefficient"
+  | Rvar x -> Var x
+  | Radd (p, q) -> Add (rat_poly_to_poly p, rat_poly_to_poly q)
+  | Rmul (p, q) -> Mul (rat_poly_to_poly p, rat_poly_to_poly q)
 
 (* ══════════════════════════════════════════════════════════════════════
    Collect like terms
@@ -240,17 +266,17 @@ let reduce (p: mpoly) (gs: mpoly list) : mpoly =
 (* ══════════════════════════════════════════════════════════════════════
    mpoly -> poly
    ══════════════════════════════════════════════════════════════════════ *)
-let mono_to_poly (m: monomial) : poly =
-  let base = Const m.coef in
+let mono_to_poly (m: monomial) : rat_poly =
+  let base = Rconst m.coef in
   List.fold_left (fun acc (v, e) ->
-    let rec pow n = if n = 1 then Var v else Mul (Var v, pow (n-1)) in
-    Mul (acc, if e = 1 then Var v else pow e)
+    let rec pow n = if n = 1 then Rvar v else Rmul (Rvar v, pow (n-1)) in
+    Rmul (acc, if e = 1 then Rvar v else pow e)
   ) base m.exps
 
-let mpoly_to_poly = function
-  | []     -> Const rat_zero
+let mpoly_to_rat_poly = function
+  | []     -> Rconst rat_zero
   | [m]    -> mono_to_poly m
-  | m::ms  -> List.fold_left (fun acc t -> Add (acc, mono_to_poly t))
+  | m::ms  -> List.fold_left (fun acc t -> Radd (acc, mono_to_poly t))
                 (mono_to_poly m) ms
 
 (* ══════════════════════════════════════════════════════════════════════
@@ -365,9 +391,9 @@ let mpoly_has_t (p: mpoly) : bool =
    So the t-free elimination polynomial is lcm(p,q),
    and gcd(p,q) = p*q / lcm(p,q).
    ══════════════════════════════════════════════════════════════════════ *)
-let poly_gcd_and_lcm (p: poly) (q: poly) : poly * poly =
-  let mp = normalise_lex (collect (to_mpoly p)) in
-  let mq = normalise_lex (collect (to_mpoly q)) in
+let poly_gcd_and_lcm (p: poly) (q: poly) : rat_poly * rat_poly =
+  let mp = normalise_lex (collect (to_mpoly (to_rat_poly p))) in
+  let mq = normalise_lex (collect (to_mpoly (to_rat_poly q))) in
 
   (* Shift original variables up by 1; t = Var 0 goes first in lex order,
      so it is eliminated first by Buchberger's algorithm.                 *)
@@ -412,13 +438,13 @@ let poly_gcd_and_lcm (p: poly) (q: poly) : poly * poly =
   let pq    = mul_mpoly mp mq in
   let gcd_m = normalise_lex (div_mpoly pq lcm_m) in
 
-  (mpoly_to_poly gcd_m, mpoly_to_poly lcm_m)
+  (mpoly_to_rat_poly gcd_m, mpoly_to_rat_poly lcm_m)
 
-let poly_gcd_raw (p: poly) (q: poly) : poly = fst (poly_gcd_and_lcm p q)
+let poly_gcd_raw (p: poly) (q: poly) : rat_poly = fst (poly_gcd_and_lcm p q)
 
 let poly_gcd (p: poly) (q: poly) : int * poly * poly * poly =
-  let mp = normalise_lex (collect (to_mpoly p)) in
-  let mq = normalise_lex (collect (to_mpoly q)) in
+  let mp = normalise_lex (collect (to_mpoly (to_rat_poly p))) in
+  let mq = normalise_lex (collect (to_mpoly (to_rat_poly q))) in
   let gcd = poly_gcd_raw p q in
   let mgcd = normalise_lex (collect (to_mpoly gcd)) in
   let mp1 =  normalise_lex (div_mpoly mp mgcd) in
@@ -428,13 +454,13 @@ let poly_gcd (p: poly) (q: poly) : int * poly * poly * poly =
   let lcmq1 = mpoly_factor 1 mq1 in
   let lcmpq = lcm lcmp1 lcmq1 in
   let factor = lcmg * lcmpq in
-  (factor, mpoly_to_poly (mult_lcm lcmg mgcd), 
-   mpoly_to_poly (mult_lcm lcmpq mp1),
-   mpoly_to_poly (mult_lcm lcmpq mq1))
+  (factor, rat_poly_to_poly (mpoly_to_rat_poly (mult_lcm lcmg mgcd)), 
+   rat_poly_to_poly (mpoly_to_rat_poly (mult_lcm lcmpq mp1)),
+   rat_poly_to_poly (mpoly_to_rat_poly (mult_lcm lcmpq mq1)))
 
 let expensive_id (p : poly) : poly =
-    let mp = normalise_lex (collect (to_mpoly p)) in
-    mpoly_to_poly mp
+    let mp = normalise_lex (collect (to_mpoly (to_rat_poly p))) in
+    rat_poly_to_poly (mpoly_to_rat_poly mp)
 
 (* ══════════════════════════════════════════════════════════════════════
    Example
