@@ -45,26 +45,24 @@ Ltac reduce_PCond :=
         BinList.jump List.tl].
 
 (* Term is the expression that was given by the user for simplification.
-  FV is the list of sub-expressions of Term that are not recognized as
-  compound field expression (they are considered as variables).  D and N
+  hyp is the partially instantiated lemma, on this term and the global
+  list of instantiations for the free variables. D and N
   are two polynomials (in type Pol Z), such that
     Term = Pphi_pow FV  N / Pphi_pow FV D
-  is already guaranteed,  but N / D is not a reduced fraction because these
-  two polynomials ay have a non-trivial common divisor.
-  This tactic also assume that the goal has approximately the shape :
+  is already guaranteed (for a value of FV that we do not need to know).
+  However, N / D is not a reduced fraction because these two polynomials
+  may have a non-trivial common divisor.
+  This tactic also assume that the type of hyp has approximately the shape :
   (forall m num' den' gcd, IZR m <> 0 ->
     <<Pc m * N = num' * gcd>> ->
     <<Pc m * D = den' * gcd>> ->  PCond <some list> ->
-    FEeval _ .. _ fe = Pphi_pow N / Pphi_pow D) -> ...
+    FEeval _ .. _ fe = Pphi_pow N / Pphi_pow D)
   where the equalities between << >> are expressed in much longer
   form and FEeval _ .. _ FV fe is convertible with Term.  *)
-Ltac fraction_finisher Term FV D N :=
-let hyp := fresh "rewrite_lemma" in intros hyp;
+Ltac fraction_finisher Term hyp D N :=
 let hyp2 := fresh "rew_l2" in
-let D1 := eval vm_compute in D in
-let N1 := eval vm_compute in N in
 let res :=
-  constr:(ltac:(elpi factorize_by_gcd ltac_term:(N1) ltac_term:(D1))) in
+  constr:(ltac:(elpi factorize_by_gcd ltac_term:(N) ltac_term:(D))) in
 let F := eval cbv [fst] in (fst res) in
 let N2 := eval cbv [fst snd] in (fst (snd res)) in
 let D2 := eval cbv [fst snd] in (fst (snd (snd res))) in
