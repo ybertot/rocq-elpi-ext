@@ -14,7 +14,7 @@ let gcd a b =
 let rat_simplify r =
   if r.num = 0 then rat_zero
   else
-    let g = gcd (abs r.num) (abs r.den) in
+    let g = gcd r.num r.den in
     let sign = if r.den < 0 then -1 else 1 in
     { num = sign * r.num / g; den = sign * r.den / g }
 
@@ -27,6 +27,7 @@ let rat_inv a   = if a.num = 0 then failwith "div by zero"
 let rat_div a b = rat_mul a (rat_inv b)
 let rat_is_zero r = r.num = 0
 
+
 (* ══════════════════════════════════════════════════════════════════════
    Poly type
    ══════════════════════════════════════════════════════════════════════ *)
@@ -35,6 +36,30 @@ type rat_poly =
   | Rmul of rat_poly * rat_poly
 type poly = Const of int | Var of int | Add of poly * poly | Mul of poly * poly
 [@@deriving show]
+
+(* ══════════════════════════════════════════════════════════════════════
+   sparse Horner type
+   ══════════════════════════════════════════════════════════════════════ *)
+type pol = Pc rat | PX of (pol * int * pol) | Pinj of (int * pol)
+
+let rec pinj j = function
+  RConst c -> RConst c
+| Rvar n -> Rvar (n + j)
+| Radd p1 p2 -> Radd (pinj j p1) (pinj j p2)
+| Rmul p1 p2 -> Rmul (pinj j p1) (pinj j p2)
+
+let pow p i =
+  let rec aux = function
+      0 -> Rconst rat_one
+    | 1 -> p
+    | n -> Rmul p (aux (n - 1)) in
+    aux i
+
+let rec pol_to_rat_poly = function
+  Pc c -> Rconst c
+| PX (p, i, q) -> Add (Mul (pow (Var 1) i) (pol_to_rat_poly p))
+                    (pinj 1 (pol_to_rat_poly q))
+| Pinj i q -> pin i (pol_to_rat_poly q)
 
 (* ══════════════════════════════════════════════════════════════════════
    Internal monomial representation
