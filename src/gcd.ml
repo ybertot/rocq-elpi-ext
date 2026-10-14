@@ -40,26 +40,26 @@ type poly = Const of int | Var of int | Add of poly * poly | Mul of poly * poly
 (* ══════════════════════════════════════════════════════════════════════
    sparse Horner type
    ══════════════════════════════════════════════════════════════════════ *)
-type pol = Pc rat | PX of (pol * int * pol) | Pinj of (int * pol)
+type pol = Pc of rat | PX of (pol * int * pol) | Pinj of (int * pol)
 
 let rec pinj j = function
-  RConst c -> RConst c
+  Rconst c -> Rconst c
 | Rvar n -> Rvar (n + j)
-| Radd p1 p2 -> Radd (pinj j p1) (pinj j p2)
-| Rmul p1 p2 -> Rmul (pinj j p1) (pinj j p2)
+| Radd (p1, p2) -> Radd (pinj j p1, pinj j p2)
+| Rmul (p1, p2) -> Rmul (pinj j p1, pinj j p2)
 
 let pow p i =
   let rec aux = function
       0 -> Rconst rat_one
     | 1 -> p
-    | n -> Rmul p (aux (n - 1)) in
+    | n -> Rmul (p, aux (n - 1)) in
     aux i
 
 let rec pol_to_rat_poly = function
   Pc c -> Rconst c
-| PX (p, i, q) -> Add (Mul (pow (Var 1) i) (pol_to_rat_poly p))
-                    (pinj 1 (pol_to_rat_poly q))
-| Pinj i q -> pin i (pol_to_rat_poly q)
+| PX (p, i, q) -> Radd (Rmul (pow (Rvar 1) i, pol_to_rat_poly p),
+                    pinj 1 (pol_to_rat_poly q))
+| Pinj (i, q) -> pinj i (pol_to_rat_poly q)
 
 (* ══════════════════════════════════════════════════════════════════════
    Internal monomial representation

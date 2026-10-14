@@ -1,0 +1,188 @@
+
+% sorting a list of integers removing duplicates
+func list_insert int, list int -> list int.
+
+list_insert I [] [I].
+
+list_insert A [A | L] [A | L] :- !.
+
+list_insert I [A | L] [I, A | L] :-
+  I < A, !.
+
+list_insert I [A | L] [A | L1] :-
+  list_insert I L L1, !.
+  
+% sorting a list of integers: the main predicate
+
+func list_sort list int -> list int.
+list_sort [] [].
+
+list_sort [A | L] L1 :-
+  list_sort L L2, !,
+  list_insert A L2 L1.
+
+func list_max list int -> int.
+list_max [A] A.
+
+list_max [A, B | L]  V:-
+  A < B, !, list_max [B | L] V.
+
+list_max [A, _B | L] V :-
+  list_max [A | L] V.
+
+% sorting an association list for values associated to integers
+
+func alist_insert pair int term, list (pair int term) -> list (pair int term).
+
+alist_insert (pr I _) [pr I _ | _] _ :- !,
+  coq.error "There are two declarations for the same integer"  I.
+
+alist_insert (pr I V) [pr I2 V2 | L] [pr I V, pr I2 V2 | L] :-
+  I < I2, !.
+
+alist_insert (pr I V) [pr I2 V2 | L] [pr I2 V2 | L2] :-
+  alist_insert (pr I V) L L2.
+
+alist_insert (pr I V) [] [pr I V].
+
+func alist_sort list (pair int term) -> list (pair int term).
+
+alist_sort [] [].
+
+alist_sort [A | L] L2 :-
+  alist_insert A L L2.
+
+% converting a coq object of type positive to a builtin int
+func positive_to_int term -> int.
+% TODO regarder dans algebra tactics
+positive_to_int {{xH}} 1 :- !.
+
+positive_to_int {{:coq xI lp:X}} N1 :-
+  positive_to_int X N,
+  N1 is 2 * N + 1.
+
+% TODO
+positive_to_int {{xO lp:X}} N1 :-
+  positive_to_int X N,
+  N1 is 2 * N.
+
+% converting a real number to an int
+func real_to_int term -> int.
+
+% actually, this works for any positive number encapsulated in two unary
+% functions
+real_to_int {{IZR (Z.pos lp:P)}} I :-
+  positive_to_int P I.
+
+real_to_int {{0}} 0.
+
+% the inverse predicate, int_to_real, produces a real number that is
+% the representation of the integer.
+
+func int_to_real int -> term.
+
+int_to_real I {{IZR lp:Iz}} :-
+  int_to_Z I Iz.
+
+func int_to_Z int -> term.
+int_to_Z 0 {{Z0}} :- !.
+
+int_to_Z I {{Z.pos lp:Ip}} :-
+  int_to_positive I Ip.
+
+func int_to_positive int -> term.
+int_to_positive 1 {{xH}}:- !.
+
+int_to_positive N (app[C, Td]) :-
+  1 < N,
+  Nd is N div 2,
+  B is N mod 2,
+  choose_pos_constructor.aux B C,
+  int_to_positive Nd Td.
+
+func int_to_nat int -> term.
+int_to_nat 0 {{O}} :- !.
+
+int_to_nat N {{S lp:N'}} :-
+  std.do! [
+    0 < N,
+    N1 is N - 1,
+    int_to_nat N1 N'
+  ].
+  
+func choose_pos_constructor.aux int -> term.
+
+choose_pos_constructor.aux 1 {{xI}} :- !.
+
+choose_pos_constructor.aux 0 {{xO}} :- !.
+
+choose_pos_constructor.aux _ _ :-
+  coq.error "choose_pos_constructor.aux only accepts 0 or 1 as input".
+
+func make_one_spec term, term -> pair int term.
+make_one_spec V1 V2 (pr I1 V2) :-
+    real_to_int V1 I1,!.
+
+func list_app list (pair int term), list (pair int term) -> list (pair int term).
+
+list_app [] L2 L2.
+
+list_app [A | L1] L2 [A | L3] :-
+    list_app L1 L2 L3.
+
+
+func say term.
+say T :- coq.say {coq.term->string T}.
+
+func sayL list term.
+sayL nil :- coq.say "nil".
+sayL [A|Tl] :- coq.term->string A S, std.do![coq.say S, coq.say "::", sayL Tl].
+
+func sayLT list term.
+sayLT nil :- coq.say "nil".
+sayLT [T|Tl] :- std.do![coq.say {coq.term->string T}, coq.say "::", sayLT Tl].
+
+func sayLA list argument.
+sayLA nil :- coq.say "nil".
+sayLA [trm A|Tl] :- std.do![coq.say {coq.term->string A}, coq.say "::", sayLA Tl].
+
+func remove_duplicates list term -> list term.
+remove_duplicates [] [].
+
+remove_duplicates [T | Ts] [T|Ts''] :-
+    remove T Ts Ts',
+    remove_duplicates Ts' Ts''.
+
+func remove term, list term -> list term.
+
+remove _ [] [].
+remove T [T |L] L' :-
+    remove T L L',!.
+
+remove T [T1 |L] [T1|L'] :-
+    remove T L L'. 
+
+func terms_to_trms list term -> list argument.
+terms_to_trms nil nil.
+terms_to_trms [T | Tl] [trm T | Tl'] :-
+    terms_to_trms Tl Tl'.
+
+func trms_to_terms list argument -> list term.
+trms_to_terms nil nil.
+trms_to_terms [trm T | Tl] [T | Tl'] :-
+    trms_to_terms Tl Tl'.
+
+func seal-goals list goal -> list sealed-goal.
+seal-goals [] [].
+seal-goals [G|R] [seal G|R1] :-
+    seal-goals R R1.
+
+func list_to_real list term -> term.
+list_to_real nil {{@ nil R}}.
+list_to_real [T|Tl] {{@cons R lp:T lp:L}} :-
+    list_to_real Tl L.
+
+func term_to_list term -> list term.
+term_to_list {{List.nil}} nil.
+term_to_list {{List.cons (lp:T) (lp:L)}}[T|Tl] :-
+    term_to_list L Tl.
