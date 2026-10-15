@@ -37,7 +37,7 @@ Ltac reduce_Pphi_pow :=
       add_mult_dev mkadd_mult mkmult_c_pos mkmult_rec BinNat.N.to_nat 
       PosDef.Pos.to_nat PosDef.Pos.iter_op List.rev' List.rev_append
       List.hd List.tl add_pow_list mkmult_rec Pos.add Nat.add
-      display_pow_linear].
+      display_pow_linear BinList.jump].
 
 Ltac reduce_PCond :=
   cbv [fst snd PCond condition PEeval BinList.nth BinNat.N.to_nat
@@ -53,21 +53,21 @@ Ltac reduce_PCond :=
   However, N / D is not a reduced fraction because these two polynomials
   may have a non-trivial common divisor.
   This tactic also assume that the type of hyp has approximately the shape :
-  (forall m num' den' gcd, IZR m <> 0 ->
-    <<Pc m * N = num' * gcd>> ->
-    <<Pc m * D = den' * gcd>> ->  PCond <some list> ->
-    FEeval _ .. _ fe = Pphi_pow N / Pphi_pow D)
+  (forall m nu delta gamma, IZR m <> 0 ->
+    <<Pc m * N = nu * gamma>> ->
+    <<Pc m * D = delta * gamma>> ->  PCond <some list> ->
+    FEeval _ .. _ fe = Pphi_pow nu / Pphi_pow delta)
   where the equalities between << >> are expressed in much longer
   form and FEeval _ .. _ FV fe is convertible with Term.  *)
 Ltac fraction_finisher Term hyp D N :=
 let hyp2 := fresh "rew_l2" in
 let res :=
   constr:(ltac:(elpi factorize_by_gcd ltac_term:(N) ltac_term:(D))) in
-let F := eval cbv [fst] in (fst res) in
-let N2 := eval cbv [fst snd] in (fst (snd res)) in
-let D2 := eval cbv [fst snd] in (fst (snd (snd res))) in
-let Gcd := eval cbv [snd fst] in (snd (snd (snd res))) in
-assert (hyp2 := hyp F N2 D2 Gcd);
+let m := eval cbv [fst] in (fst res) in
+let nu := eval cbv [fst snd] in (fst (snd res)) in
+let delta := eval cbv [fst snd] in (fst (snd (snd res))) in
+let gamma := eval cbv [snd fst] in (snd (snd (snd res))) in
+assert (hyp2 := hyp m nu delta gamma);
 lazymatch type of hyp2 with
 | _ -> _ -> _ -> _ -> ?t = ?r =>
 change t with Term in hyp2;
