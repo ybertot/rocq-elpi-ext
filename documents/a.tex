@@ -19,7 +19,7 @@
 }
 \geometry{margin=1in}
 \setlist[itemize]{leftmargin=*}
-\lstset{basicstyle=\small\ttfamily, columns=fullflexible, keepspaces=true,
+\lstset{numbers=left,basicstyle=\small\ttfamily, columns=fullflexible, keepspaces=true,
   frame=single, breaklines=true, backgroundcolor=\color{gray!7}}
 
 \title{Improving the Tactics \texttt{ring} and \texttt{field}\\
@@ -536,22 +536,21 @@ not perform the polynomial computation again. The later assertions connect the
 oracle output back to Rocq by proving the two factorization identities and the
 non-zero condition on the scale factor.
 \begin{lstlisting}
+Ltac fraction_finisher Term hyp D N :=
+let hyp2 := fresh "rew_l2" in
 let res :=
-  constr:(ltac:(elpi factorize_by_gcd ltac_term:(N1) ltac_term:(D1))) in
-let F := eval cbv [fst] in (fst res) in
-let N2 := eval cbv [fst snd] in (fst (snd res)) in
-let D2 := eval cbv [fst snd] in (fst (snd (snd res))) in
-let Gcd := eval cbv [snd fst] in (snd (snd (snd res))) in
-let fact_n0 := fresh "factor_not_0" in
-let num_eq := fresh "equality_for_numerator" in
-let den_eq := fresh "equality_for_denominator" in
-assert (fact_n0 : IZR F <> 0) by
-  (apply eq_IZR_contrapositive; easy);
-enough
-  ((Pmul (Pc F) N1 ?== Pmul N2 Gcd) = true /\
-   (Pmul (Pc F) D1 ?== Pmul D2 Gcd) = true)
-  as [num_eq den_eq];
-  exact (hyp F N2 D2 Gcd fact_n0 num_eq den_eq).
+  constr:(ltac:(elpi factorize_by_gcd ltac_term:(N) ltac_term:(D))) in
+let m := eval cbv [fst] in (fst res) in
+let nu := eval cbv [fst snd] in (fst (snd res)) in
+let delta := eval cbv [fst snd] in (fst (snd (snd res))) in
+let gamma := eval cbv [snd fst] in (snd (snd (snd res))) in
+assert (hyp2 := hyp m nu delta gamma);
+lazymatch type of hyp2 with
+| _ -> _ -> _ -> _ -> ?t = ?r =>
+change t with Term in hyp2;
+  (try rewrite hyp2; clear hyp hyp2);
+  [reduce_Pphi_pow | easy| easy | easy| reduce_PCond]
+end.
 \end{lstlisting}
 This is an Ltac function rather than a standalone tactic: it takes terms and
 proof data as arguments and performs the final proof steps. The cross-product
