@@ -29,7 +29,7 @@
 \maketitle
 
 \begin{abstract}
-This document describes an extension of Rocq's reflexive algebraic tactics. The
+This document describes an extension of Rocq's \cite{rocq-prover} reflexive algebraic tactics. The
 main goal is to make \texttt{ring} and \texttt{field} usable on expressions that
 contain functions outside the ring or field fragment. The approach rewrites the
 arguments of such functions, computes polynomial greatest common divisors with
@@ -352,6 +352,8 @@ $$
 The polynomial gcd computation returns
 
 $$
+  m = 1,
+  \qquad
   \gamma=X+1,
   \qquad
   \nu=X-1,
@@ -434,7 +436,7 @@ determines the leading monomial used in polynomial reduction and
 Buchberger's algorithm.
 
 
-We use Buchberger's algorithm as part of the external polynomial computation; a machine-checked implementation of the algorithm in Coq was presented by Théry \cite{thery2001machine}. Developing a new Gröbner basis algorithm is not the objective of this work. Instead, the polynomial computation is treated as an untrusted oracle: its output is used to propose a factorization, and Rocq independently verifies the algebraic identities required to justify the resulting reduction. The correctness of the extension therefore does not depend on trusting the OCaml implementation.
+We use Buchberger's algorithm as part of the external polynomial computation. This algorithm is well-known and an implementation of it was presented by Théry \cite{thery2001machine}. Developing a new Gröbner basis algorithm is not the objective of this work. Instead, the polynomial computation is treated as an untrusted oracle: its output is used to propose a factorization, and Rocq independently verifies the algebraic identities required to justify the resulting reduction. The correctness of the extension therefore does not depend on trusting the OCaml implementation.
 
 
 \section{The Rocq--ELPI--OCaml interface}
@@ -513,10 +515,10 @@ is converted back into a representation that Rocq can use.
 The three representations serve different purposes. ELPI's \texttt{polyT} provides the interface for encoding polynomials and passing them to foreign functions. Rocq's \texttt{PExpr} is the expression language accepted by the \texttt{norm} function, while \texttt{Pol} is the normalized representation used by the field lemmas. The conversion functions connect these representations, so the OCaml implementation can operate on its own polynomial data type without directly constructing Rocq's \texttt{PExpr} or \texttt{Pol} terms.
 
 \subsection{ELPI as the bridge}
-ELPI is a Prolog-like language for term manipulation. Its foreign-function
-interface is implemented in OCaml and connects ELPI to OCaml code loaded by the
-Rocq plugin. The plugin exposes the polynomial representation to ELPI through
-constructors for constants, variables, addition, and multiplication.
+ELPI is a Prolog-like language for term manipulation
+\cite{DBLP:conf/lpar/DunchevGCT15}. The integration of ELPI with Rocq builds on work on implementing
+type theory in higher-order constraint logic programming
+\cite{DBLP:journals/mscs/GuidiCT19}. Its foreign-function interface is implemented in OCaml and connects ELPI to OCaml code loaded by the Rocq plugin. The plugin exposes the polynomial representation to ELPI through constructors for constants, variables, addition, and multiplication.
 
 The plugin exposes \texttt{polyT} with constructors \texttt{pcst},
 \texttt{var}, \texttt{add}, and \texttt{mul}:
@@ -603,7 +605,7 @@ change t with Term in hyp2;
   [reduce_Pphi_pow | easy| easy | easy| reduce_PCond]
 end.
 \end{lstlisting}
-This is an Ltac function rather than a standalone tactic: it takes terms and
+This is an Ltac fragment rather than a standalone tactic: it takes terms and
 proof data as arguments and performs the final proof steps. The cross-product
 equalities are proved only after the oracle has returned its factors, and the
 resulting hypothesis is then used to rewrite the original term. Ltac chooses the
