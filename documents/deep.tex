@@ -19,8 +19,7 @@
 }
 \geometry{margin=1in}
 \setlist[itemize]{leftmargin=*}
-\lstset{numbers=left,basicstyle=\small\ttfamily, columns=fullflexible, keepspaces=true,
-  frame=single, breaklines=true, backgroundcolor=\color{gray!7}}
+\lstset{numbers=left,basicstyle=\small\ttfamily, columns=fullflexible,keepspaces=true, frame=single, breaklines=true, backgroundcolor=\color{gray!7}}
 
 \title{Improving the Tactics \texttt{ring} and \texttt{field}\\
  }
@@ -43,15 +42,16 @@ We would like to formalize undergraduate mathematics in a style that remains clo
 This setting motivates the question of how algebraic automation should behave when an algebraic expression occurs inside a function that is not itself part of the algebraic theory handled by the tactic. For example, a student should ideally be able to write
 
 \[
-\ln(\pi^2+\pi\times\pi)=\ln(2\pi^2)
+\log(\pi^2+\pi\times\pi)=\log(2\pi^2)
 \]
 without having to explicitly expose the intermediate algebraic rewriting
 \[
 \pi^2+\pi\times\pi=2\pi^2.
 \]
 The proof assistant should be able to recognize and justify this transformation automatically.\newline
-The difficulty is that the outer function $\ln$ is not a ring operation. Consequently, the algebraic tactic cannot treat the whole expression as a ring expression. This raises a more general question: how can reflexive algebraic tactics simplify algebraic expressions occurring inside function applications that they do not otherwise understand?
+The difficulty is that the outer function $\ln$ is not a ring operation. Consequently, the algebraic tactic cannot treat the whole expression as a ring expression. 
 
+The existing \texttt{ring\_simplify} tactic addresses this issue for ring expressions by recursively simplifying algebraic expressions inside function applications. However, the analogous approach does not directly extend to field expressions. This raises the question of how to obtain a suitable representation of field expressions when they occur inside functions that the field normalizer does not handle.
 \section{Reflexive Algebraic Normalization}
 The starting point is the way Rocq's reflexive algebraic tactics normally solve
 equalities. Rather than applying a sequence of rewriting lemmas, the tactic
@@ -81,9 +81,9 @@ More generally, the process can be described in three steps:
 Although the arguments of the two logarithms are polynomial expressions, the complete terms
 
 $$
-  \ln(\pi^2+\pi\mathbin{\times}\pi)
+  \log(\pi^2+\pi\mathbin{\times}\pi)
   \qquad\text{and}\qquad
-  \ln(2\pi^2)
+  \log(2\pi^2)
 $$
 
 are themselves outside the polynomial language. At the level at which \texttt{ring} sees them, they therefore become distinct atoms. The tactic cannot discover that these atoms are equal by simplifying their arguments.
@@ -143,11 +143,10 @@ $$
 can be normalized to $2\pi^2$ before the surrounding $\ln$ application is considered. The two sides then contain the same function application, so the outer equality can be closed.
 
 This approach works naturally for \texttt{ring} because polynomial normalization provides a canonical representation of the algebraic expression. For \texttt{field}, however, the situation is more subtle.
+
 \subsection{Ring simplification versus field simplification}
 
-The recursive strategy described above is implemented by \texttt{ring\_simplify}, which simplifies algebraic expressions inside function applications by recursively normalizing their arguments. This works well for ring expressions because normalization gives a canonical polynomial representation.
-
-The analogous approach is less straightforward for field expressions. The \texttt{field\_simplify} tactic can establish equality by cross multiplication without reducing fractions to a common representation. As a result, simplifying field expressions inside an outer function requires an additional reduction step, which motivates the gcd-based approach developed below.
+The recursive strategy described above is implemented by \texttt{ring\_simplify}, which simplifies algebraic expressions inside function applications. An analogous approach using \texttt{field\_simplify} does not suffice for field expressions, as explained in the following section. 
 
 \section{The limitation of field normalization}
 Consider
@@ -188,7 +187,7 @@ $$
 
 by cross multiplication, but this proof does not require either fraction to
 be rewritten to a common representative. In particular, the two sides can
-remain syntactically different after field normalization.
+remain syntactically different after the \texttt{field\_simplify} calls.
 
 This distinction does not matter when the equality of the two fractions is
 the final goal. Once the cross-product equality and the required non-zero
@@ -226,16 +225,9 @@ $$
   \cos\left(\frac{2\pi}{4}\right).
 $$
 
-Cross multiplication alone does not provide this representation. It
-establishes an equality between fractions, but it does not require the
-numerator and denominator of each fraction to be divided by their common
-factor. This is the difference between proving that two expressions are
-equal and computing a representation that is useful for rewriting.
-
 A polynomial gcd provides the missing operation. Given a numerator
 $N$ and denominator $D$, we compute a common factor $G$ and corresponding
-quotients. The numerator and denominator can then be represented by
-reduced terms. For example,
+quotients.  For example,
 
 $$
   N=X^2-1,\qquad D=X+1
@@ -253,15 +245,12 @@ $$
   \frac{X-1}{1}.
 $$
 
-The reduction is useful here because the resulting numerator and
-denominator can be used as a common representation when the fraction occurs
-as an argument of a function not handled by the normalizer. The gcd computation is not needed to establish
-the equality of two fractions by cross multiplication. It is needed to
-produce a representation that can be propagated through the surrounding
-term.
+This reduction provides a common representation that can be propagated
+through an enclosing function application.
 
 
 \section{The gcd oracle}
+The gcd computation operates on the numerator and denominator extracted by the existing field-simplification procedure. We denote these polynomials by \(N\) and \(D\), respectively. The oracle computes a common factor and the corresponding quotients, which are then used to construct a reduced representation of the fraction.
 The field-simplification theorem has the following shape:
 \[
  \operatorname{Fnorm}(l,e)=r \Longrightarrow
@@ -310,6 +299,8 @@ $$
   \qquad
   mD=\delta\gamma.
 $$
+Here \(N\) and \(D\) are the numerator and denominator supplied to the oracle, while \(\nu\), \(\delta\), and \(\gamma\) are the returned numerator quotient, denominator quotient, and common factor, respectively. The scale factor \(m\) accounts for a possible difference between the polynomial representations used by the external computation and Rocq. Rocq verifies the two factorization identities and the non-zero condition on \(m\) before using the returned representation.
+
 
 The integer $m$ accounts for the fact that the polynomial representation
 used by the oracle may differ from the normalized representation used by
@@ -665,22 +656,22 @@ recursive functions:
 Fixpoint r (n : nat) (x : R) : R :=
   match n with
   | O => x
-  | S n' => sin (r n' x)
+  | S n' => sin ((2*x - 2)* r n' x /2)
   end.
 
 Fixpoint r_alt (n : nat) (x : R) : R :=
   match n with
   | O => x
-  | S n' => sin (2 * r_alt n' x / 2)
+  | S n' => sin ((x^2 - 1) * r_alt n' x / (x + 1))
   end.
 \end{lstlisting}
 
-For each depth $n$, we ask Rocq to prove
-\[
+For each depth $n$, we prove the following equality
+\[ forall x : R, forall p : x  + 1 <> 0,
   r(n,x)=r_{\mathrm{alt}}(n,x).
 \]
 The proof unfolds both recursive definitions, applies
-\texttt{deep\_field}, and finishes with \texttt{reflexivity}.
+\texttt{deep\_field}, and finishes with \texttt{reflexivity} and \texttt{nra} to get rid of side conditions.
 The experiment therefore measures the cost of simplifying algebraic
 expressions nested inside successive applications of $\sin$.
 
@@ -689,17 +680,13 @@ The benchmark measures both the tactic execution time and the total wall-clock t
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.8\textwidth]{images/benchmark.png}
-  \caption{Quadratic fit to the measured execution times as a function of nesting depth $n$.}
+  \caption{Measured execution times as a function of nesting depth $n$.}
   \label{fig:quadratic-fit}
 \end{figure}
+We evaluated 13 instances, for $(1 \leq n \leq 13)$, running each instance 10 times and reporting the mean execution time. The mean tactic execution time increased from (0.038) seconds at (n=1) to (54.715) seconds at (n=13), while the mean wall-clock time increased from (0.499) seconds to (74.090) seconds.
 
-All 35 tested instances, for $1 \leq n \leq 35$, completed successfully. The tactic execution time increased from $0.042$ seconds at depth 1 to $9.506$ seconds at depth 35, an increase by a factor of approximately 226. The total wall-clock time increased from $0.502$ seconds to $12.123$ seconds over the same range.
+The execution time increases rapidly with the nesting depth. However, the practical relevance of this growth depends on the depths encountered in actual proofs. For undergraduate mathematical students it is unlikely to encounter more than say depth 5 formula, so the cost is acceptable. 
 
-Figure~\ref{fig:quadratic-fit} illustrates the quadratic model fitted to the execution-time measurements. A quadratic fit describes the observed timing data closely, while a linear model does not adequately capture the trend over the full range. However, the quality of this fit does not establish quadratic asymptotic complexity: the experiment covers a finite range of inputs and measures execution time rather than the number of computational steps.
-These results provide an initial assessment of the practical cost
-of the approach. A broader evaluation, including additional expression
-families and comparisons with alternative simplification strategies,
-would be needed to characterize its performance more generally.
 
 \section{Lessons learned}
 The implementation separates polynomial computation from proof construction. The OCaml oracle proposes polynomial factors, while Rocq verifies the algebraic identities needed to justify their use. This separation allows the extension to benefit from external computation without trusting the OCaml implementation for correctness.
