@@ -51,7 +51,9 @@ without having to explicitly expose the intermediate algebraic rewriting
 The proof assistant should be able to recognize and justify this transformation automatically.\newline
 The difficulty is that the outer function $\ln$ is not a ring operation. Consequently, the algebraic tactic cannot treat the whole expression as a ring expression.
 
-The existing \texttt{ring\_simplify} tactic addresses this issue for ring expressions by recursively simplifying algebraic expressions inside function applications. However, the analogous approach does not directly extend to field expressions. This raises the question of how to obtain a suitable representation of field expressions when they occur inside functions that the field normalizer does not handle.
+The existing \texttt{ring\_simplify} tactic addresses this issue for ring expressions by recursively simplifying algebraic expressions inside function applications.
+% TODO: Here, the analogous example with log(\frac{2 \pi}{4}) = log (\frac(3 \pi}{6}) devrait être donné, en expliquant que field_simplify does not help as much as ring_simplify does in the other case
+However, the analogous approach does not directly extend to field expressions. This raises the question of how to obtain a suitable representation of field expressions when they occur inside functions that the field normalizer does not handle.
 \section{Reflexive Algebraic Normalization}
 The starting point is the way Rocq's reflexive algebraic tactics normally solve
 equalities. Rather than applying a sequence of rewriting lemmas, the tactic
@@ -148,7 +150,7 @@ This approach works naturally for \texttt{ring} because polynomial normalization
 
 The recursive strategy described above is implemented by \texttt{ring\_simplify}, which simplifies algebraic expressions inside function applications. An analogous approach using \texttt{field\_simplify} does not suffice for field expressions, as explained in the following section.
 
-\section{The limitation of field normalization}
+\section{The limits of {\tt field\_simplify}}
 Consider
 \[
   \frac{\pi}{\pi^2+\pi^2}=\frac{1}{2\pi}.
@@ -189,6 +191,7 @@ by cross multiplication, but this proof does not require either fraction to
 be rewritten to a common representative. In particular, the two sides can
 remain syntactically different after the \texttt{field\_simplify} calls.
 
+%TODO this example should be in the motivation section
 This distinction does not matter when the equality of the two fractions is
 the final goal. Once the cross-product equality and the required non-zero
 conditions have been established, the proof is complete. It matters when the
@@ -249,167 +252,127 @@ This reduction provides a common representation that can be propagated
 through an enclosing function application.
 
 
-\section{The gcd oracle}
-The gcd computation operates on the numerator and denominator extracted by the existing field-simplification procedure. We denote these polynomials by \(N\) and \(D\), respectively. The oracle computes a common factor and the corresponding quotients, which are then used to construct a reduced representation of the fraction.
-The field-simplification theorem has the following shape:
+\section{Making room for an oracle}
+The existing theorem that justifies the {\tt field\_simplify} tactic has the
+following shape:
 \[
- \operatorname{Fnorm}(l,e)=r \Longrightarrow
+ \operatorname{Fnorm} e = r \Longrightarrow
  \operatorname{FEeval}(l,e)=
  \frac{\operatorname{Pphi\_pow}(l,\operatorname{norm}(\operatorname{num}(r)))}
   {\operatorname{Pphi\_pow}(l,\operatorname{norm}(\operatorname{den}(r)))}.
 \]
-The purpose of the oracle is to compute a common factor together with the
-quotients required by the field-simplification theorem. For a simple
-non-trivial example, consider
+Starting from an arbitrary expression in the studied field, for instance \(\frac{1}{\pi} + \frac{1}{cos(1)}\), the reification produces the expression
+\(e = \frac{1}{X_0} + \frac{1}{X_1}\) and the list of bindings \([\pi;cos(1)]\),
+so that \(FEeval(l, e)\) computes to the initial expression 
+\(\frac{1}{\pi} + \frac{1}{cos(1)}\).  The function \(\operatorname{Fnorm}\) is a gallina-language function that computes a fraction of ring expressions, together with a collection of expressions that should all be non zero.  The name \(\operatorname{Fnorm}\) is poorly chosen, because this function does not compute a normal form, it only ensures that the expression now has the shape of a single fraction whose numerator and denominator are both ring expressions expressions (of the kind to be processed by the ring machinery).  The ring expressions are themselves not guaranteed to be in normal form.
 
-$$
-  N=X^2-1=(X-1)(X+1),
-  \qquad
-  D=X+1.
-$$
+In the case of the input expression \(e = \frac{1}{X_0} + \frac{1}{X_1}\), \(r\) has the shape \(r = \frac{X_1 + X_0}{X_0 X_1}\), together with the conditions that \(\pi\) and \(cos(1)\) should not be 0.
 
-The common factor is
+The next step of processing the formula is to compute the ring normal forms of both parts of the fraction, this is performed by the calls to the \(norm\)
+function that appear in the right-hand side of the conclusion equality.
 
-$$
-  \gamma=X+1.
-$$
+The shape of this theorem states clearly that the numerator and the
+denominator are processed independently.  If there is a common factor,
+it is not removed by the calls to \(\operatorname{norm}\).
 
-The corresponding quotients are
+\label{sec:extension-lemma}
+In our extension to the {\tt field\_simplify} tactic, we instead rely on a
+theorem with the following shape:
 
-$$
-  \nu=X-1,
-  \qquad
-  \delta=1.
-$$
-
-The reduced fraction is therefore represented by
-
-$$
-  \frac{\nu}{\delta}
-  =
-  \frac{X-1}{1}.
-$$
-
-The oracle does not directly return an equality proof. Instead, it returns
-the data from which Rocq can construct such a proof. More precisely, the
-extension introduces a non-zero integer $m$ and requires
-
-$$
-  mN=\nu\gamma,
-  \qquad
-  mD=\delta\gamma.
-$$
-Here \(N\) and \(D\) are the numerator and denominator supplied to the oracle, while \(\nu\), \(\delta\), and \(\gamma\) are the returned numerator quotient, denominator quotient, and common factor, respectively. The scale factor \(m\) accounts for a possible difference between the polynomial representations used by the external computation and Rocq. Rocq verifies the two factorization identities and the non-zero condition on \(m\) before using the returned representation.
-
-
-The integer $m$ accounts for the fact that the polynomial representation
-used by the oracle may differ from the normalized representation used by
-Rocq up to multiplication by a non-zero integer scalar. The scale factor
-is therefore part of the interface between the two polynomial
-representations and allows Rocq to express the relationship between them
-through the factorization identities.
-
-The two identities
 \[
-  mN=\nu\gamma,
-  \qquad
-  mD=\delta\gamma
-\]
-show that the same factor $\gamma$ has been removed from the numerator and
-denominator. Since $m\ne0$, this scaling does not change the represented
-fraction. The field theorem can consequently replace the original numerator
-and denominator by $\nu$ and $\delta$.
-The Rocq side subsequently proves these two factorization identities and
-the condition
+\begin{array}{l}
+ \operatorname{Fnorm} e = r \Longrightarrow\\
+  \forall m~\nu~\delta~\gamma,\\
+  m \neq 0 \\
 
-$$
-  m\ne0.
-$$
-
-The resulting theorem uses the reduced numerator and denominator:
-
-$$
+  m \times \operatorname{norm}(\operatorname{num}(r)) = \nu\gamma \Longrightarrow\\
+  m \times \operatorname{norm}(\operatorname{denum}(r))= \delta\gamma \Longrightarrow\\
   \operatorname{FEeval}(l,e)=
-  \frac{\operatorname{Pphi\_pow}(l,\operatorname{norm}(\nu))}
-       {\operatorname{Pphi\_pow}(l,\operatorname{norm}(\delta))}.
-$$
+  \frac{\displaystyle{\operatorname{Pphi\_pow}(l, \nu)}}
+       {\displaystyle{\operatorname{Pphi\_pow}(l, \delta)}}.
+\end{array}
+\]
 
-\section{A complete example}
+In what follows, we name \(N\) and \(D\) the numerator \(\operatorname{norm}(\operatorname{num}(r))\) and the denominator \(\operatorname{norm}(\operatorname{denum}(r))\), respectively.  In this theorem, \(m\) is an integer, and \(\nu\), \(\delta\), and \(\gamma\) are polynomials in normal form.  This theorem is a direct consequence of the previous one, but it makes so that the ultimately produced fraction can be cleaned of common polynomial factors, if these factors are included in the \(\gamma\) polynomial.
 
-The following example illustrates the reduction of a fraction that occurs as an argument of a function not handled by the field normalizer. Consider
+The four values \(m\), \(\nu\), \(\delta\), and \(\gamma\) have to be produced for this theorem to be applied, and this is where the an external computation, which we will call an oracle in the rest of this paper, is needed.
 
-$$
-f\left(\frac{X^2-1}{X^2+2X+1}\right),
-$$
+In practice, we rely on an implementation of a Gröbner basis algorithm to
+compute the greatest common divisor of the two polynomials.  This algorithm
+operates on polynomials with rational coefficient.  It is easy to translate
+our polynomials \(N\) \(D\) which have integer coefficient, into polynomials
+with rational coefficients, but when processing the result of the greatest
+common divisor computation, we need to recover polynomials with integer
+coefficients.  This is where the integer \(m\) is needed if we have candidate
+polynomials \(\nu'\), \(\delta'\), \(\gamma'\), we only need to find two numbers
+\(\m_1\) and \(m_2\), so that \(m_1 \times \nu' = \nu\) has integer coefficients, and so do \(m_1 \times \delta' = \delta \) and \(m_2 \times \gamma' = \gamma\), in this case \(m=m_1 m_2\).
 
-where \(f\) is outside the polynomial language handled by the field normalizer.
+\subsection{A complete example}
+
+The following example illustrates a computation where we take advantage of
+the gcd computation.  Consider
+\[
+\frac{4 X^2-1}{2X^2+3X+2},
+\]
+
 The numerator and denominator are
 
-$$
-  N=X^2-1,\qquad D=X^2+2X+1.
-$$
+\[
+  N=4X^2-1,\qquad D=2X^2+3X+2.
+\]
 
 The polynomial gcd computation returns
 
-$$
-  m = 1,
+\[
+  m = 8,
   \qquad
-  \gamma=X+1,
+  \gamma=16X+8,
   \qquad
-  \nu=X-1,
+  \nu=2X-1,
   \qquad
-  \delta=X+1.
-$$
+  \delta=X+2.
+\]
 
-The returned data satisfy
+These value satisfy the following equalities
 \begin{equation}
-  N=\nu\gamma,
+  mN=\nu\gamma,
   \qquad
-  D=\delta\gamma.
+  mD=\delta\gamma.
   \label{eq:factorization-identities}
 \end{equation}
 
-In this example the scale factor is $m=1$.
+In this example the scale factor is $m=8$.
 
 The fraction can consequently be represented as
-$$
+\[
   \frac{N}{D}
   =
   \frac{\nu}{\delta}
   =
   \frac{X-1}{X+1}.
-$$
+\]
 The gcd computation provides a reduced representation of the fraction that can be used to rewrite the argument of \(f\). In particular, the original function application can be rewritten as
 
-$$
+\[
 f\left(\frac{X^2-1}{X^2+2X+1}\right)
 \longrightarrow
-f\left(\frac{X-1}{X+1}\right).
-$$
+f\left(\frac{2X-1}{X+2}\right).
+\]
 
 The rewrite is justified by the factorization identities ~\ref{eq:factorization-identities} verified by Rocq.
 
-\section{Implementation of the oracle}
-The OCaml implementation uses two representations of polynomials. Rocq's polynomial representation uses integer coefficients, whereas the gcd computation may require intermediate rational coefficients. The OCaml implementation therefore represents coefficients as rational numbers. Its \texttt{poly} type is an expression-tree representation used at the interface of the computation:
-\begin{lstlisting}[language=ML]
-type rat = { num: int; den: int }
-
-type poly =
-| Const of rat
-| Var of int
-| Add of poly * poly
-| Mul of poly * poly
-\end{lstlisting}
-
-Before performing polynomial computations, the implementation converts a
-\texttt{poly} expression to a sparse multivariate representation. A monomial
-consists of a rational coefficient and a sorted list of pairs $(i,e)$, where
-$i$ is a variable index and $e$ is its exponent:
-
+\subsection{Implementation of the oracle}
+The Oracle is implemented as an OCaml program, which operates on sequences of
+monomials to represent multivariate polynomials with rational coefficients.
+The data type used in the program has the following shape:
 \begin{lstlisting}[language=ML]
 type monomial = { coef: rat; exps: (int * int) list }
 type mpoly = monomial list
 \end{lstlisting}
+A monomial
+consists of a rational coefficient and a sorted list of pairs $(i,e)$, where
+$i$ is a variable index and $e$ is its exponent:
+
 
 For example, the monomial
 
@@ -420,39 +383,55 @@ $$
 is represented by the coefficient $3$ and the exponent list
 
 $$
-  [(1,2),(4,1)].
+  [(1,2);(4,1)].
 $$
-
-The function \texttt{to\_mpoly} translates the expression tree into a list of monomials. The function \texttt{collect} then combines monomials with the same exponent list by adding their coefficients.
-For example, $2X_1^2X_4 + 3X_1^2X_4$ becomes $5X_1^2X_4$ .
 Polynomial arithmetic, monomial ordering, reduction, and Buchberger's
 algorithm operate on this sparse representation. The result is converted back
 to \texttt{poly} when it is returned by the oracle.
 
-Rational coefficients are stored explicitly because the polynomial
+To facilitate the communication with Rocq's implementation of polynomial, we
+chose to implement an OCaml datatype of ring expressions with integer
+constants based only on integer constants, variables, addition and
+multiplication.  The datatype description has the following shape:
+\begin{lstlisting}[language=ML]
+type poly =
+| Const of int | Var of int | Add of poly * poly | Mul of poly * poly
+\end{lstlisting}
+This datatype is isomorphic to a subset of the datatype {\tt PExpr} used in
+the implementation of the ring tactic.
+Before performing polynomial computations, the implementation converts a
+\texttt{poly} expression to a sparse multivariate representation.
+
+Rational coefficients are used because the polynomial
 computations can introduce non-integral coefficients. Monomials are ordered
 lexicographically, with lower variable indices taking precedence. This order
 determines the leading monomial used in polynomial reduction and
 Buchberger's algorithm.
 
+We use Gröbner basis computations because it is well known that the
+least common multiplier of two polynomials \(p\) and \(q\) appears naturally
+in the Gröbner basis generated for the family \((1 - X_0) p, X_0 q\), if \(X_0\)
+is not used in \(p\) \(q\) and this variable is smaller than all others in the
+order used for the computation.  Once the least common multiplier is obtained,
+it is easy to derive the greatest common divisor.
 
-We use Buchberger's algorithm as part of the external polynomial computation. This algorithm is well-known and an implementation of it was presented by Théry \cite{thery2001machine}. Developing a new Gröbner basis algorithm is not the objective of this work. Instead, the polynomial computation is treated as an untrusted oracle: its output is used to propose a factorization, and Rocq independently verifies the algebraic identities required to justify the resulting reduction. The correctness of the extension therefore does not depend on trusting the OCaml implementation.
+Developing a trusted new Gröbner basis algorithm is not the objective of this work. Instead, the polynomial computation is treated as an untrusted oracle: its output is used to propose a factorization, and Rocq independently verifies the algebraic identities required to justify the resulting reduction. The correctness of the extension therefore does not depend on trusting the OCaml implementation.
 
 
 \section{The Rocq--ELPI--OCaml interface}
 \subsection{Experimental setup}
-To implement these ideas and make them available to users of the Rocq
-prover at an early experimental stage, we chose a design that re-uses as
+To work at an early experimental stage, we chose a design that re-uses as
 much as possible the current implementation of the {\tt ring}-like
 tactics but avoids modifying
-any part of the Rocq main program.  As a result, our experiments
+any part of the Rocq main program.  As a result, our experiment
 currently works with an unmodified version of the {\tt rocq-core}
 package, but a modified version of the {\tt rocq-stdlib} package.
 
-The code in {\tt rocq-runtime} assumes that all behavior of the {\tt
+The code in {\tt rocq-core} assumes that all behavior of the {\tt
   ring}-like tactics is governed by 4 lemmas, each of which is an
-instantiation of generic lemma parameterized by arbitrary ring or
-field structures.  In our case, we need to use an extra lemma that
+instantiation of a generic lemma parameterized by arbitrary ring or
+field structures.  In our case, we need to use the extra lemma presented in
+Section~\ref{sec:extension-lemma} that
 accounts for the possibility of calling an oracle after the
 reification step.  We added such a lemma in the {\tt rocq-stdlib}
 package, under the name {\tt Field\_rw\_pow\_correct\_w\_gcd}, its
@@ -475,10 +454,10 @@ This tactic is passed as argument to all the new tactics we added to
 the {\tt rocq-stdlib} package under the name {\tt finish\_tac}.
 
 Four of the new tactics are variations of {\tt field\_simplify},
-{\tt Field\_simplify}, {\tt Field\_simplify\_gen}, {\tt
+{\tt Field\_simplify}, \break {\tt Field\_simplify\_gen}, {\tt
   Field\_norm\_gen}, and they are named by adding the {\tt \_gcd}
 suffix to the name.  Two of the new tactics are variations of
-{\tt ApplyLemmaThen} {\tt ApplyLemmaThenAndCont} which
+{\tt ApplyLemmaThen}, {\tt ApplyLemmaThenAndCont} which
 are drawn from the {\tt ring\_simplify} tactic implementation, but we
 preferred renaming them as {\tt rewrites} and {\tt one\_of\_rewrites}.
 
@@ -486,13 +465,33 @@ In practice, the only change implemented by these variations is to
 make it possible to choose the lemma that is being used in the proof,
 and to call the finishing tactic for each of the rewrites performed by
 {\tt one\_of\_rewrites}.
+
+Our current implementation can be adapted statically to any field structure,
+and we specialized it to the field structure of the type {\tt R} of real
+numbers.  The usual behavior of {\tt field\_simplify} which adapt
+dynamically to the field structure determined by the type of formulas found
+as argument is not available, as this would require modifying the
+{\tt rocq-core} package.
 \subsection{Polynomial representations}
 
+We need data representing polynomials to be transferred from Rocq to the OCaml (the oracle's implementation language) and back.  Writing directly a converter between these two worlds is difficult, and we preferred to use some ELPI capabilities as a broker.
 
-The gcd computation is implemented outside Rocq's existing polynomial representation, so the extension must translate expressions between the representations used by Rocq, ELPI, and OCaml.
-Rocq uses \texttt{PExpr} and \texttt{Pol}. The function \texttt{norm} converts
-\texttt{PExpr} into the sparse Horner form \texttt{Pol}. ELPI uses
-\texttt{polyT}. The bridge converts between these representations.
+We defined in {\tt Elpi} a datatype called {\tt polyT} which is an exact mirror
+of the datatype {\tt poly} that we use in the OCaml implementation of the
+oracle.  Elpi also provides an easy way to write foreign function calls, so
+that we have an easy way to transfer data of type {\tt polyT} to data of type {\tt poly} in the oracle and call the main function of the oracle on this data.  This foreign function interface is described in more detail in Section~\ref{sec:foreign-declaration}.
+
+Rocq uses two types to represent ring expressions: {\tt PExpr} where the
+constructors describe directly the operation of addition, multiplication, and
+so on, and {\tt Pol} where constructors describe the structure of polynomials
+in normal form.  The function {\tt norm} mentioned in
+Section~\ref{sec:extension-lemma} actually produces objects of type {\tt Pol}.
+
+The ELPI language provides powerful inspection mechanisms and interfaces
+to Rocq, so that it easy to write function converting Rocq data into ELPI
+Data.  In the present case, we wrote an ELPI function called
+{\tt pol\_encode} converting polynomial
+of type {\tt Pol} (in Rocq) to values of type {\tt polyT} (in ELPI).
 
 For example, the polynomial
 \[
@@ -503,58 +502,96 @@ can be represented in \texttt{PExpr} as
   \texttt{PEadd (PEX 1) (PEmul (PEX 1) (PEX 1))}.
 \]
 The function \texttt{norm} converts this expression into its canonical
-\texttt{Pol} representation. On the ELPI side, the same polynomial is
+\texttt{Pol} representation, passing this value to {\tt pol\_encode} then
+produces the following result
 encoded as
 \[
   \texttt{add (var 1) (mul (var 1) (var 1))}.
 \]
-The bridge decodes this ELPI representation into \texttt{PExpr} before
-normalization. Conversely, the result of the external polynomial computation
-is converted back into a representation that Rocq can use.
-
-The three representations serve different purposes. ELPI's \texttt{polyT} provides the interface for encoding polynomials and passing them to foreign functions. Rocq's \texttt{PExpr} is the expression language accepted by the \texttt{norm} function, while \texttt{Pol} is the normalized representation used by the field lemmas. The conversion functions connect these representations, so the OCaml implementation can operate on its own polynomial data type without directly constructing Rocq's \texttt{PExpr} or \texttt{Pol} terms.
 
 \subsection{ELPI as the bridge}
 ELPI is a Prolog-like language for term manipulation
 \cite{DBLP:conf/lpar/DunchevGCT15}. The integration of ELPI with Rocq builds on work on implementing
 type theory in higher-order constraint logic programming
-\cite{DBLP:journals/mscs/GuidiCT19}. Its foreign-function interface is implemented in OCaml and connects ELPI to OCaml code loaded by the Rocq plugin. The plugin exposes the polynomial representation to ELPI through constructors for constants, variables, addition, and multiplication.
+\cite{DBLP:journals/mscs/GuidiCT19}. Its foreign-function interface is implemented in OCaml and connects ELPI to OCaml code loaded by the Rocq plugin.
 
-The plugin exposes \texttt{polyT} with constructors \texttt{pcst},
-\texttt{var}, \texttt{add}, and \texttt{mul}:
+To establish the correspondence between type \texttt{polyT} (in ELPI) and
+type \texttt{poly} (in OCAML) we only need to write some systematic code
+that makes it explicit that the {\tt add} symbol in ELPI is connected to
+the {\tt Add} constructor in OCaml, the type of both its arguments are
+the same as the type produced by {\tt add}, and pattern matching on a term
+with the {\tt Add} constructor is the same as inspecting the subterms of
+a {\tt add} term.  This correspondance is expressed by the following piece of
+code (looking only at the description for {\tt add}).
+\label{sec:foreign-declaration}
 \begin{lstlisting}[language=ML]
 K("add", "binary addition", S(S(N)),
   B (fun x y -> Add (x, y)),
   M (fun ~ok ~ko t ->
     match t with Add (x, y) -> ok x y | _ -> ko ()))
 \end{lstlisting}
-Here \texttt{S} describes the recursive value and \texttt{ko} handles a
-mismatch.
+Here the {\tt K} expresses that we are describing a constructor correspondance,
+The text {\tt S (S (N))} expresses that {\tt add} has two arguments, whose
+is in the type currently being described.  Line 2 shows how to build a term
+in OCaml corresponding to a term in ELPI whose head symbol is {\tt add}.  This
+line is especially useful when translating terms from ELPI to OCaml.
+Conversely, lines 3 and 4 describe how to convert data from OCaml to ELPI.
 
-\subsection{Encoding and foreign calls}
-The decoder builds a \texttt{PExpr} term and asks Rocq's VM for its
-\texttt{Pol} form:
+This description for {\tt add} is combined with descriptions for {\tt mul},
+{\tt var} (for variables), and {\tt pcst} (for constants) in a declaration
+whose processing generates at the same time type declarations to be loaded
+in ELPI and OCaml code that will perform the conversions when needed.
+
+Similarly, the oracle's main function must be exposed as a
+ELPI function.  In OCaml, this function is provided with type:
+\begin{center}
+  \texttt{Gcd.poly\_gcd : poly -> poly -> (int * poly * poly * poly)}.
+\end{center}
+The foreign function interface lets us declare a predicate {\tt gcd\_poly} in
+ELPI, where different parts of the result appear as different arguments of
+the predicate.
+
+When processing the declaration of {\tt polyT} and {\tt gcd\_poly}, the
+foreign function tool produces the following declarations to be loaded
+in ELPI.
+\begin{lstlisting}
+external symbol pcst : int -> polyT = "1".  % constant polynomial
+external symbol var : int -> polyT = "1".  % indexed variable
+external symbol add : polyT -> polyT -> polyT = "1".  % binary addition
+external symbol mul : polyT -> polyT -> polyT = "1".  % binary multiplication
+
+% [gcd_poly p1 p2 factor gcd p1_div p2_div] gcd is the greatest common
+% divisor of polynomials p1 and p2,up to an integer factor 
+%  p1_div is (factor * p1)/gcd, p2_div is (factor * p2)/gcd
+external func gcd_poly polyT, polyT -> int, polyT, polyT, polyT.
+\end{lstlisting}
+It also produces some OCaml code that can be loaded in Rocq at the same time
+as the oracle implementation.  With all this, any call to the ELPI
+function {\tt gcd\_poly} with two inputs of type {\tt polyT} triggers
+a call to {\tt Gcd.poly\_gcd} in OCaml, with the two corresponding inputs
+of type {\tt poly}.  The results of this execution are then converted back
+to type {\tt polyT}.
+
+In this code fragment, \% marks the beginning of a comment.
+
+The main justification theorem requires the various polynomials to be in
+type {\tt Pol}, but the ELPI function {\tt gcd\_poly} returns values in
+type {\tt polyT}.  The easiest way to reconcile the need is to translate each term of type {\tt polyT} into the corresponding term of type {\tt PExpr}.  This
+easy because the type {\tt PolyT} is isomorphic to a sub-language of
+{\tt PExpr}.  The value of type {\tt Pol} can then be obtained by calling
+again the {\tt norm} function.
+
+the function {\tt gcd\_poly} has inputs and outputs in types {\tt polyT} and
+{\tt int}.  In the end we wrap this function into a ELPI function that takes
+as inputs terms of the Rocq language, representing these polynomials and
+numbers.  This is done with the following fragments of code:
+
 \begin{lstlisting}
 func pol_decode polyT -> term.
 pol_decode PolyT_a Result :-
-  pe_decode_naive PolyT_a Pe_a,
+  pe_decode PolyT_a Pe_a,
   coq.reduction.vm.norm {{norm lp:Pe_a}} {{Pol Z}} Result.
-\end{lstlisting}
-OCaml provides
-\[
-  \texttt{Gcd.poly\_gcd : poly -> poly -> (int * poly * poly * poly)}.
-\]
-This becomes an ELPI predicate with two inputs and four outputs:
-\begin{lstlisting}
-kind polyT type.
-external symbol pcst : int -> polyT.
-external symbol var  : int -> polyT.
-external symbol add  : polyT -> polyT -> polyT.
-external symbol mul  : polyT -> polyT -> polyT.
-external func gcd_poly polyT, polyT -> int, polyT, polyT, polyT.
-\end{lstlisting}
-The wrapper encodes the inputs, calls the function, and decodes the results:
-\begin{lstlisting}
+
 func gcd_and_factors term, term -> term, term, term, term.
 gcd_and_factors N D Ne De Gcd MZ :-
   pol_encode N Nx, pol_encode D Dx,
@@ -563,8 +600,9 @@ gcd_and_factors N D Ne De Gcd MZ :-
   pol_decode G Gcd, z_decode M MZ.
 \end{lstlisting}
 
-This computation is then made available as an {\tt Ltac} tactic by the
-following code
+In turn, the computation can be made available to the language in which
+the {\tt ring}-like tactics have been programmed, namely the {\tt LTac}
+language.
 \begin{lstlisting}
 Elpi Tactic factorize_by_gcd.
 Elpi Accumulate Plugin "ext.elpi".
@@ -576,18 +614,27 @@ solve (goal _ _ _ _ [trm N, trm D] as G) GL :-
   (refine {{(lp:LCM, (lp:N', (lp:D', lp:Gcd)))}} G GL).
 }}.
 \end{lstlisting}
+This describes how a piece of ELPI code can be viewed in Ltac as a Ltac function
+that returns a value (in this case a Rocq quadruplet).  To call this function,
+it will be necessary to write {\tt Elpi factorize\_by\_gcd N D}.
 
-\subsection{Ltac calling ELPI}
+\subsection{Combining the oracle with the extended theorem}
+We can now come back closer to the Rocq prover, where we only need to
+finish programming our Ltac tactic that uses the result of the oracle in
+combination with the extended theorem {\tt Field\_rw\_pow\_correct\_w\_gcd}
+(also described in Section~\ref{sec:extension-lemma}).
 The proof script still lives in Ltac, but the actual computation is delegated to
 ELPI. The bridge is explicit: an Ltac function builds a Rocq term, calls the
 ELPI computation, and receives back the scale factor, reduced numerator, reduced denominator, and gcd.
-The value named \texttt{res} is a nested Rocq pair returned by the ELPI tactic.
-The first projection is the integer scale factor, while the remaining
-projections contain the reduced numerator, reduced denominator, and gcd. The
-following calls to \texttt{cbv} only unpack this transport structure; they do
-not perform the polynomial computation again. The later assertions connect the
-oracle output back to Rocq by proving the two factorization identities and the
-non-zero condition on the scale factor.
+
+For each of the formulas that we want to process with {\tt field\_simplify},
+the formula has already been reified, the numerator and denominator
+have already been normalized (as ring formulas), and the theorem has already
+been instantiated with this reified formula.  The tactic
+{\tt fraction\_finisher} is then called with the initial formula
+(in variable {\tt Term}), the instantiated theorem (in variable {\tt hyp}),
+the denominator (in variable {\tt D}) and the numerator (in variable {\tt N}).
+The tactic performs the following actions:
 \begin{lstlisting}
 Ltac fraction_finisher Term hyp D N :=
 let hyp2 := fresh "rew_l2" in
@@ -605,21 +652,41 @@ change t with Term in hyp2;
   [reduce_Pphi_pow | easy| easy | easy| reduce_PCond]
 end.
 \end{lstlisting}
-This is an Ltac fragment rather than a standalone tactic: it takes terms and
-proof data as arguments and performs the final proof steps. The cross-product
-equalities are proved only after the oracle has returned its factors, and the
-resulting hypothesis is then used to rewrite the original term. Ltac chooses the
-terms to send, ELPI encodes them and runs the polynomial routine, and the tuple
-coming back is consumed by the proof script.
+At line 4, the oracle is being called and the result stored in variable
+{\tt res}.  In lines 5 to 8 the various parts are retrieved, and at
+line 9, the theorem is further instantiated with these parts.
 
+After this instantiation the theorem statement
+has the shape of an equality that is
+valid solely under 4 assumptions (this is checked on lines 10-11).  the first
+assumption is that the
+number \(m\) is non zero.  The next two assumptions are the factorization
+identities, the last assumption is the collection of non-zero conditions
+that was collected at the time of reification.
 
-\subsection{Making the computation available}
-The extension provides an ELPI entry point used by the Ltac function. It computes
-the factors, normalizes them in Rocq, and returns the scale factor m,
-reduced numerator, reduced denominator, and gcd:
+On ligne 12, we change the left-hand side
+of the equality with the initial formula, because it is convertible
+when reification is correct, then we rewrite with this conditional
+equality, thus obtaining 5 goals.  The first one is the where we performed
+the rewriting operation, in this goal all polynomial normalization operations
+should be performed (tactic {\tt reduce\_Pphi\_pow} on line 40).  The next
+three goals
+should be trivially provable if the oracle performed its job correctly, hence
+the three calls to the tactic {\tt easy} on line 14.  We have no way to make
+sure that the last goal can be proved automatically, but the formula should
+should be cleaned up so all functions coming from the {\tt field}
+infrastructure are reduced (tactic {\tt reduce\_Pcond} on line 40).
 
+\subsection{A few examples}
+We defined a new tactic named {\tt field\_simplify'} that integrates this
+gcd computation.
 
-
+Given a goal statement of the following form, 
+\begin{lstlisting}
+cos (2 * PI / 4) = cos (3 * PI / 6)
+\end{lstlisting}
+Tactic {\tt field\_simplify (2 * PI / 4)} does not change the goal.  On the other hand, {\tt field\_simplify' (2 * PI / 4)} does replace {\tt (2 * PI / 4)}
+with {\tt (PI / 2)}.
 
 \section{Integrating with \texttt{field}}
 
