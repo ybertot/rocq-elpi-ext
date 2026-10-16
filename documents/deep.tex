@@ -49,7 +49,7 @@ without having to explicitly expose the intermediate algebraic rewriting
 \pi^2+\pi\times\pi=2\pi^2.
 \]
 The proof assistant should be able to recognize and justify this transformation automatically.\newline
-The difficulty is that the outer function $\ln$ is not a ring operation. Consequently, the algebraic tactic cannot treat the whole expression as a ring expression. 
+The difficulty is that the outer function $\ln$ is not a ring operation. Consequently, the algebraic tactic cannot treat the whole expression as a ring expression.
 
 The existing \texttt{ring\_simplify} tactic addresses this issue for ring expressions by recursively simplifying algebraic expressions inside function applications. However, the analogous approach does not directly extend to field expressions. This raises the question of how to obtain a suitable representation of field expressions when they occur inside functions that the field normalizer does not handle.
 \section{Reflexive Algebraic Normalization}
@@ -146,7 +146,7 @@ This approach works naturally for \texttt{ring} because polynomial normalization
 
 \subsection{Ring simplification versus field simplification}
 
-The recursive strategy described above is implemented by \texttt{ring\_simplify}, which simplifies algebraic expressions inside function applications. An analogous approach using \texttt{field\_simplify} does not suffice for field expressions, as explained in the following section. 
+The recursive strategy described above is implemented by \texttt{ring\_simplify}, which simplifies algebraic expressions inside function applications. An analogous approach using \texttt{field\_simplify} does not suffice for field expressions, as explained in the following section.
 
 \section{The limitation of field normalization}
 Consider
@@ -342,7 +342,7 @@ $$
 f\left(\frac{X^2-1}{X^2+2X+1}\right),
 $$
 
-where \(f\) is outside the polynomial language handled by the field normalizer. 
+where \(f\) is outside the polynomial language handled by the field normalizer.
 The numerator and denominator are
 
 $$
@@ -564,7 +564,7 @@ gcd_and_factors N D Ne De Gcd MZ :-
 \end{lstlisting}
 
 This computation is then made available as an {\tt Ltac} tactic by the
-following code 
+following code
 \begin{lstlisting}
 Elpi Tactic factorize_by_gcd.
 Elpi Accumulate Plugin "ext.elpi".
@@ -628,7 +628,7 @@ The gcd computation is integrated into the existing \texttt{field}
 simplification procedure rather than implemented as a separate user-facing
 tactic. The extension replaces the part of the simplification process that
 normally handles the numerator and denominator with a parameterizable Ltac
-function. 
+function.
 
 In a typical call, the function receives the term being rewritten, the
 hypothesis produced by field normalization, and the denominator and numerator:
@@ -687,7 +687,7 @@ The benchmark measures both the tactic execution time and the total wall-clock t
 \end{figure}
 We evaluated 13 instances, for $(1 \leq n \leq 13)$, running each instance 10 times and reporting the mean execution time. The mean tactic execution time increased from (0.038) seconds at (n=1) to (54.715) seconds at (n=13), while the mean wall-clock time increased from (0.499) seconds to (74.090) seconds.
 
-The execution time increases rapidly with the nesting depth. However, the practical relevance of this growth depends on the depths encountered in actual proofs. For undergraduate mathematical students it is unlikely to encounter more than say depth 5 formula, so the cost is acceptable. 
+The execution time increases rapidly with the nesting depth. However, the practical relevance of this growth depends on the depths encountered in actual proofs. For undergraduate mathematical students it is unlikely to encounter more than say depth 5 formula, so the cost is acceptable.
 
 
 \section{Lessons learned}
