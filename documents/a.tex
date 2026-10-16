@@ -463,34 +463,34 @@ field structures.  In our case, we need to use an extra lemma that
 accounts for the possibility of calling an oracle after the
 reification step.  We added such a lemma in the {\tt rocq-stdlib}
 package, under the name {\tt Field\_rw\_pow\_correct\_w\_gcd}, its
-statement is modification of the existing {\tt
+statement is a modification of the existing {\tt
   Field\_rw\_pow\_correct}, which is used by the existing
 {\tt field\_simplify} tactic.
 
 We then created tactics to harness the extra lemma and the oracle.
 Ultimately all these tactics should belong in the {\tt rocq-stdlib}
-package, but since recompiling the {\tt stdlib} package takes a few
-minutes on our computers, we chose to only include in {\tt
-  rocq-stdlib} the most stable part of this harness in {\tt stdlib},
+package, but since recompiling the {\tt stdlib} package takes about 50
+seconds on our computers, we chose to only include in {\tt
+  rocq-stdlib} the most stable part of this harness
 and to keep the part that was most unstable in a separate package.  As
 a result, we only have to recompile {\tt stdlib} on rare occasions,
-and fine-tuning the separate package between modifications and tests
-only takes a few seconds.
+and compiling the separate package between modifications and tests
+only takes a fraction of a second.
 
 We call the tactic that is in a separate package the finishing tactic.
 This tactic is passed as argument to all the new tactics we added to
 the {\tt rocq-stdlib} package under the name {\tt finish\_tac}.
 
-Four of the new tactics we defined are variations of {\tt field\_simplify},
+Four of the new tactics are variations of {\tt field\_simplify},
 {\tt Field\_simplify}, {\tt Field\_simplify\_gen}, {\tt
-  Field\_norm\_gen}, and they are named by adding the {\tt \_w\_gcd}
-suffix to the name.  Two of the new tactics are variations of tactics
-from the {\tt ring} infrastructure where they are called
-{\tt ApplyLemmaThenAndCont} and {\tt ApplyLemmaThenAndCont}, but we
+  Field\_norm\_gen}, and they are named by adding the {\tt \_gcd}
+suffix to the name.  Two of the new tactics are variations of
+{\tt ApplyLemmaThen} {\tt ApplyLemmaThenAndCont} which
+are drawn from the {\tt ring\_simplify} tactic implementation, but we
 preferred renaming them as {\tt rewrites} and {\tt one\_of\_rewrites}.
 
 In practice, the only change implemented by these variations is to
-make it possible to choose the justification lemma that is being used,
+make it possible to choose the lemma that is being used in the proof,
 and to call the finishing tactic for each of the rewrites performed by
 {\tt one\_of\_rewrites}.
 \subsection{Polynomial representations}
@@ -570,6 +570,20 @@ gcd_and_factors N D Ne De Gcd MZ :-
   pol_decode G Gcd, z_decode M MZ.
 \end{lstlisting}
 
+This computation is then made available as an {\tt Ltac} tactic by the
+following code 
+\begin{lstlisting}
+Elpi Tactic factorize_by_gcd.
+Elpi Accumulate Plugin "ext.elpi".
+Elpi Accumulate File encode.
+Elpi Accumulate lp:{{
+
+solve (goal _ _ _ _ [trm N, trm D] as G) GL :-
+  gcd_and_factors N D N' D' Gcd LCM,
+  (refine {{(lp:LCM, (lp:N', (lp:D', lp:Gcd)))}} G GL).
+}}.
+\end{lstlisting}
+
 \subsection{Ltac calling ELPI}
 The proof script still lives in Ltac, but the actual computation is delegated to
 ELPI. The bridge is explicit: an Ltac function builds a Rocq term, calls the
@@ -610,18 +624,6 @@ coming back is consumed by the proof script.
 The extension provides an ELPI entry point used by the Ltac function. It computes
 the factors, normalizes them in Rocq, and returns the scale factor m,
 reduced numerator, reduced denominator, and gcd:
-\begin{lstlisting}
-Elpi Tactic factorize_by_gcd.
-Elpi Accumulate Plugin "ext.elpi".
-Elpi Accumulate File encode.
-Elpi Accumulate lp:{{
-  solve (goal _ _ _ _ [trm N, trm D] as G) GL :-
-    gcd_and_factors N D N' D' Gcd M,
-    coq.reduction.vm.norm {{norm lp:N'}} {{Pol Z}} N'',
-    coq.reduction.vm.norm {{norm lp:D'}} {{Pol Z}} D'',
-    refine {{pair lp:M (pair lp:N'' (pair lp:D'' lp:Gcd))}} G GL.
-}}.
-\end{lstlisting}
 
 
 
@@ -636,7 +638,7 @@ normally handles the numerator and denominator with a parameterizable Ltac
 function. 
 
 In a typical call, the function receives the term being rewritten, the
-hypothesis produced by field normalization, and the numerator and denominator:
+hypothesis produced by field normalization, and the denominator and numerator:
 \begin{lstlisting}[language=ML]
 fraction_finisher Term hyp D N.
 \end{lstlisting}
