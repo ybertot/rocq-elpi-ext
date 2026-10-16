@@ -56,58 +56,18 @@ pol_encode {{PX lp:P lp:I lp:Q}} (add PXpart Qpart) :- !,
   p_inj 1 EncodedQ Qpart.
 
 func pe_decode polyT -> term.
-pe_decode (pcst 0) {{PEO}} :- !.
-pe_decode (pcst 1) {{PEI}} :- !.
 pe_decode (pcst Num) {{@PEc Z lp:Num1 }} :- !,
   z_decode Num Num1.
 pe_decode (var Y) {{@PEX Z lp:X}} :- !,
  pos_decode Y X.
-pe_decode (add P1 P2) X1 :-
-   pe_decode P2 {{PEO}}, !, pe_decode P1 X1.
-pe_decode (add P1 P2) X2 :-
-  pe_decode P1 {{PEO}}, !, pe_decode P2 X2.
-pe_decode (add P1 (mul (pcst (-1)) P2)) {{PEsub lp:X1 lp:X2}} :- !,
-  pe_decode P1 X1, pe_decode P2 X2.
 pe_decode (add P1 P2) {{@PEadd Z lp:X1 lp:X2}} :- !,
-  pe_decode P1 X1, pe_decode P2 X2 .
-pe_decode (mul (pcst 1) X) Y :- !,
-  pe_decode X Y.
-pe_decode (mul X (pcst 1)) Y :- !,
-  pe_decode X Y.
-pe_decode (mul X (pcst (-1))) {{PEopp lp:Y}} :- !,
-  pe_decode X Y.
-pe_decode (mul (pcst (-1)) X) {{PEopp lp:Y}} :- !,
-  pe_decode X Y.
-pe_decode (mul X X) {{@PEpow Z lp:Z (Npos 2%positive)}} :- !,
-  pe_decode X Z.
-pe_decode (mul X Y) {{@PEpow Z lp:Z (Npos lp:N1)}}:-
-  pe_decode Y {{@PEpow Z lp:Z (Npos lp:N)}},
-  pos_encode N N',
-  N'1 is N' + 1,
-  pos_decode N'1 N1,
-  pe_decode X Z,!.
-pe_decode (mul Y X) {{@PEpow Z lp:Z (Npos lp:N1)}}:-
-  pe_decode Y {{@PEpow Z lp:Z (Npos lp:N)}},
-  pos_encode N N',
-  N'1 is N' + 1,
-  pos_decode N'1 N1,
-  pe_decode X Z,!.
-pe_decode (mul P1 P2) {{PEmul lp:X1 lp:X2}} :- !,
   pe_decode P1 X1, pe_decode P2 X2.
-
-func pe_decode_naive polyT -> term.
-pe_decode_naive (pcst Num) {{@PEc Z lp:Num1 }} :- !,
-  z_decode Num Num1.
-pe_decode_naive (var Y) {{@PEX Z lp:X}} :- !,
- pos_decode Y X.
-pe_decode_naive (add P1 P2) {{@PEadd Z lp:X1 lp:X2}} :- !,
-  pe_decode_naive P1 X1, pe_decode_naive P2 X2.
-pe_decode_naive (mul P1 P2) {{@PEmul Z lp:X1 lp:X2}} :- !,
-  pe_decode_naive P1 X1, pe_decode_naive P2 X2.
+pe_decode (mul P1 P2) {{@PEmul Z lp:X1 lp:X2}} :- !,
+  pe_decode P1 X1, pe_decode P2 X2.
 
 func pol_decode polyT -> term.
 pol_decode PolyT_a Result:-
-  pe_decode_naive PolyT_a Pe_a,
+  pe_decode PolyT_a Pe_a,
   coq.reduction.vm.norm {{norm lp:Pe_a}} {{Pol Z}} Result.
 
 % encoding func, decoding func, N , D -> N', D', Gcd, LCM
